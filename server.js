@@ -1,6 +1,6 @@
-const express = require('express');
-const cors = require('cors');
-const pa11y = require('pa11y');
+import express from 'express';
+import cors from 'cors';
+import pa11y from 'pa11y';
 
 const app = express();
 const PORT = process.env.PORT || 3040;
@@ -716,4 +716,5 @@ app.listen(PORT, () => {
   console.log(`🚀 Verbesserter ReguKit A11y Check läuft auf http://localhost:${PORT}`);
   console.log(`💪 Jetzt mit sauberen Reports statt CrapGPT's Chaos!`);
 });
+
 
