@@ -1,0 +1,13 @@
+{
+  "name": "regukit-a11y-widget",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "pa11y": "^6.3.1",
+    "puppeteer": "^22.8.0"
+  }
+}
