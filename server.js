@@ -174,14 +174,14 @@ const translations = {
   for (const issue of issues) {
     const key = issue.code || 'unknown';
     if (!grouped[key]) {
-      grouped[key] = {
-        code: key,
-        type: issue.type,
-        count: 0,
-        messages: new Set(),
-        selector: issue.selector || null,
-        isPriority: 'low'
-      };
+    grouped[key] = {
+  code: key,
+  type: issue.type,
+  count: 0,
+  messages: new Set(),
+  selectors: new Set(),  // ✅ RICHTIG - Sammelt alle!
+  isPriority: 'low'
+};
       
       // Priorität bestimmen
       if (criticalPatterns.some(pattern => key.includes(pattern))) {
@@ -200,17 +200,21 @@ grouped[key].translation = {
     }
     
     grouped[key].count++;
-    if (issue.message) {
-      grouped[key].messages.add(issue.message.trim());
-    }
+if (issue.message) {
+  grouped[key].messages.add(issue.message.trim());
+}
+if (issue.selector) {  // ✅ Selektoren sammeln!
+  grouped[key].selectors.add(issue.selector);
+}
   }
 
   // In Array umwandeln und sortieren
-  return Object.values(grouped)
-    .map(g => ({
-      ...g,
-      messages: Array.from(g.messages)
-    }))
+return Object.values(grouped)
+  .map(g => ({
+    ...g,
+    messages: Array.from(g.messages),
+    samples: Array.from(g.selectors).slice(0, 3)  // ✅ Erste 3 Selektoren
+  }))
     .sort((a, b) => {
       // Zuerst nach Priorität, dann nach Anzahl
       const priorityOrder = { critical: 0, warning: 1, low: 2 };
@@ -791,6 +795,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Verbesserter ReguKit A11y Check läuft auf http://localhost:${PORT}`);
   console.log(`💪 Jetzt mit sauberen Reports statt CrapGPT's Chaos!`);
 });
+
 
 
 
