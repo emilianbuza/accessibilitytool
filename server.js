@@ -13,12 +13,13 @@ const __dirname  = path.dirname(__filename);
 const wcagDe = JSON.parse(fs.readFileSync(path.join(__dirname, 'wcag-de.json'), 'utf8'));
 
 const app = express();
-app.set('trust proxy', true);
+app.set('trust proxy', 1);
 
 // --- Security ---
 app.use(helmet());
 
 // --- CORS: nur für deine Domain freigeben ---
+app.use(express.json()); 
 app.use(cors({
   origin: [
     'https://regukit.com',
@@ -149,4 +150,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Accessibility API running on port ${PORT}`);
 });
+
 
