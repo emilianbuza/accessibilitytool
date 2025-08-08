@@ -4,6 +4,7 @@ import rateLimit from 'express-rate-limit';
 import cors from 'cors';
 import pa11y from 'pa11y';
 import { URL } from 'url';
+import wcagDe from './wcag-de.json' assert { type: 'json' };
 
 const app = express();
 
@@ -45,8 +46,9 @@ function validateUrl(input) {
 // --- API-Endpunkt ---
 app.post('/api/a11y-check', async (req, res) => {
   const { url } = req.body;
-  if (!url || !validateUrl(url)) {
-    return res.status(400).json({ error: 'Invalid URL' });
+
+  if (!url || typeof url !== 'string') {
+    return res.status(400).json({ error: 'Keine URL angegeben oder falsches Format.' });
   }
 
   try {
@@ -55,47 +57,67 @@ app.post('/api/a11y-check', async (req, res) => {
     const results = await pa11y(url, {
       standard: 'WCAG2AA',
       timeout: 60000,
+      includeNotices: true,
+      includeWarnings: true,
       chromeLaunchConfig: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
         ignoreHTTPSErrors: true
       },
       headers: {
         'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, wie Gecko) Chrome/116.0.0.0 Safari/537.36'
       }
     });
-    
-// --- Debug-Logging der Codes ---
-try {
-  if (!results || !results.issues) {
-    console.log("[A11Y-CODES] Keine Ergebnisse oder leere issues.");
-  } else {
-    const uniqueCodes = [...new Set(results.issues.map(i => i.code))];
-    console.log("[A11Y-CODES] Gefundene Codes:", uniqueCodes);
-  }
-} catch (e) {
-  console.error("[A11Y-CODES] Logging-Fehler:", e);
-}
 
+    // Gefundene Codes loggen (optional)
+    try {
+      const uniqueCodes = [...new Set(results.issues.map(i => i.code))];
+      console.log('[A11Y-CODES] Gefundene Codes:', uniqueCodes);
+    } catch (_) {}
 
-    const totalIssues = results.issues.length;
-    const score = Math.max(0, 100 - totalIssues * 2); // einfache Score-Berechnung
-    const grade =
-      score >= 90 ? 'A' :
-      score >= 75 ? 'B' :
-      score >= 50 ? 'C' :
-      score >= 25 ? 'D' : 'F';
+    // Deutsche Übersetzungen einfügen
+    const translatedIssues = results.issues.map(issue => {
+      const german = wcagDe[issue.code];
+      return {
+        code: issue.code,
+        type: issue.type,
+        selector: issue.selector || null,
+        message: german || issue.message
+      };
+    });
+
+    // Score/Grade berechnen
+    const totalIssues = translatedIssues.length;
+    const score = Math.max(0, 100 - totalIssues * 2);
+    const grade = score >= 90 ? 'A'
+               : score >= 75 ? 'B'
+               : score >= 50 ? 'C'
+               : score >= 25 ? 'D'
+               : 'F';
+
+    // Anzahl Fehler/Warnungen zählen
+    const counts = translatedIssues.reduce((acc, i) => {
+      if (i.type === 'error') acc.errors++;
+      else if (i.type === 'warning') acc.warnings++;
+      else acc.notices++;
+      return acc;
+    }, { errors: 0, warnings: 0, notices: 0 });
 
     res.json({
+      success: true,
       url,
+      standard: 'WCAG 2.1 AA (pa11y: WCAG2AA)',
       score,
       grade,
-      issues: results.issues
+      counts,
+      issues: translatedIssues
     });
+
   } catch (err) {
-    console.error('[A11Y-CHECK ERROR]', err);
-    res.status(500).json({
-      error: 'Analysis failed. The site may block bots, block CORS, or be unreachable.'
+    console.error('[A11Y-CHECK] Fehler:', err?.name, err?.message);
+    return res.status(500).json({
+      success: false,
+      error: 'Analyse fehlgeschlagen. Die Site blockiert evtl. Bots/CORS oder ist nicht erreichbar.'
     });
   }
 });
@@ -113,6 +135,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Accessibility API running on port ${PORT}`);
 });
+
 
 
 
