@@ -55,7 +55,7 @@ app.post('/api/a11y-check', async (req, res) => {
 
   try {
     const results = await pa11y(url, {
-      standard: 'WCAG2.1AA',
+      standard: 'WCAG2AA',
       includeNotices: true,
       includeWarnings: true,
       timeout: 90000, // 90 Sekunden
@@ -143,3 +143,4 @@ app.get('/', (_req, res) => {
 app.listen(PORT, () => {
   console.log(`ReguKit A11y Check Widget running on http://localhost:${PORT}`);
 });
+
