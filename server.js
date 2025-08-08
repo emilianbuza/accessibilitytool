@@ -1,6 +1,21 @@
 import express from 'express';
 import cors from 'cors';
 import pa11y from 'pa11y';
+// wcag-de.json laden
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+let wcagDe = {};
+try {
+  wcagDe = JSON.parse(fs.readFileSync(join(__dirname, 'wcag-de.json'), 'utf8'));
+  console.log('✅ wcag-de.json geladen!');
+} catch (e) {
+  console.warn('⚠️ wcag-de.json nicht gefunden');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3040;
@@ -118,10 +133,13 @@ function processAndCleanIssues(issues) {
         grouped[key].isPriority = 'warning';
       }
       
-      // Deutsche Übersetzung hinzufügen
-      if (translations[key]) {
-        grouped[key].translation = translations[key];
-      }
+    // Deutsche Übersetzung hinzufügen
+const germanText = wcagDe[key] || translations[key]?.description || 'Unbekanntes Problem';
+grouped[key].translation = {
+  title: translations[key]?.title || germanText.split('.')[0] || 'Barrierefreiheitsproblem',
+  description: germanText,
+  fix: translations[key]?.fix || 'Siehe WCAG-Richtlinien'
+};
     }
     
     grouped[key].count++;
@@ -716,5 +734,6 @@ app.listen(PORT, () => {
   console.log(`🚀 Verbesserter ReguKit A11y Check läuft auf http://localhost:${PORT}`);
   console.log(`💪 Jetzt mit sauberen Reports statt CrapGPT's Chaos!`);
 });
+
 
 
