@@ -69,48 +69,105 @@ function processAndCleanIssues(issues) {
   ];
 
   // Deutsche Übersetzungen für die wichtigsten Issues
-  const translations = {
-    'WCAG2AA.Principle2.Guideline2_4.2_4_2.H25.2': {
-      title: 'Seitentitel fehlt oder unbrauchbar',
-      description: 'Der Seitentitel ist leer, zu allgemein oder nicht aussagekräftig. Beispiel: "Kontakt – ReguKit" statt "Untitled Document"',
-      fix: 'Eindeutige, beschreibende Titel für alle Seiten hinzufügen'
-    },
-    'WCAG2AA.Principle2.Guideline2_4.2_4_4.H77': {
-      title: 'Unbrauchbare Linktexte',
-      description: 'Links mit Texten wie "Hier klicken", "Mehr" oder "Link" sind nicht aussagekräftig für Screenreader',
-      fix: '"Hier klicken" durch beschreibende Texte ersetzen: "Produktdetails anzeigen"'
-    },
-    'WCAG2AA.Principle1.Guideline1_4.1_4_3.G18.Fail': {
-      title: 'Kontrast zu niedrig',
-      description: 'Text- und Hintergrundfarben haben weniger als 4,5:1 Kontrast (3:1 für große Schrift)',
-      fix: 'Farben anpassen für bessere Lesbarkeit - Tools: WebAIM Contrast Checker'
-    },
-    'WCAG2AA.Principle4.Guideline4_1.4_1_1.F77': {
-      title: 'Doppelte IDs gefunden',
-      description: 'Mehrere HTML-Elemente haben die gleiche ID. Das verwirrt Screenreader und JavaScript',
-      fix: 'Jede ID nur einmal pro Seite verwenden'
-    },
-    'WCAG2AA.Principle3.Guideline3_2.3_2_2.H32.2': {
-      title: 'Formulare ohne Submit-Button',
-      description: 'Formulare haben keinen Absende-Button. Nutzer ohne Maus können diese nicht verwenden',
-      fix: '<button type="submit"> oder <input type="submit"> zu Formularen hinzufügen'
-    },
-    'WCAG2AA.Principle1.Guideline1_1.1_1_1.H67.1': {
-      title: 'Problematische Bild-Attribute',
-      description: 'Bilder mit leerem alt="" haben trotzdem einen title-Text. Das verwirrt Screenreader',
-      fix: 'Entweder title entfernen oder aussagekräftigen alt-Text hinzufügen'
-    },
-    'WCAG2AA.Principle2.Guideline2_4.2_4_7.G149': {
-      title: 'Fokus nicht sichtbar',
-      description: 'Keyboard-Navigation zeigt nicht klar, welches Element gerade aktiv ist',
-      fix: 'CSS focus-styles hinzufügen: :focus { outline: 2px solid #0066cc; }'
-    },
-    'WCAG2AA.Principle1.Guideline1_3.1_3_1_A.G141': {
-      title: 'Falsche Überschriften-Struktur',
-      description: 'Überschriften-Hierarchie ist nicht logisch (z.B. H5 nach H2)',
-      fix: 'Überschriften in logischer Reihenfolge: H1 → H2 → H3 → H4...'
-    }
-  };
+  // ERSETZE dein translations Objekt in processAndCleanIssues mit diesem:
+
+const translations = {
+  'WCAG2AA.Principle2.Guideline2_4.2_4_2.H25.2': {
+    title: 'Seitentitel fehlt oder unbrauchbar',
+    description: 'Der Seitentitel ist leer, zu allgemein oder nicht aussagekräftig.',
+    fix: 'Eindeutige, beschreibende Titel für alle Seiten hinzufügen'
+  },
+  'WCAG2AA.Principle2.Guideline2_4.2_4_4.H77': {
+    title: 'Linktexte sind nicht aussagekräftig',
+    description: 'Links mit Texten wie "Hier klicken", "Mehr" oder "Link" sind nicht aussagekräftig.',
+    fix: '"Hier klicken" durch beschreibende Texte ersetzen: "Zur Produktseite", "Kontakt aufnehmen"'
+  },
+  'WCAG2AA.Principle1.Guideline1_4.1_4_3.G18.Fail': {
+    title: 'Kontrast zu niedrig',
+    description: 'Text- und Hintergrundfarben haben weniger als 4,5:1 Kontrast.',
+    fix: 'Farben anpassen: Dunkler Text auf hellem Hintergrund oder umgekehrt'
+  },
+  'WCAG2AA.Principle4.Guideline4_1.4_1_1.F77': {
+    title: 'Doppelte IDs gefunden',
+    description: 'Mehrere HTML-Elemente haben die gleiche ID.',
+    fix: 'Jede ID nur einmal pro Seite verwenden - IDs müssen eindeutig sein'
+  },
+  'WCAG2AA.Principle3.Guideline3_2.3_2_2.H32.2': {
+    title: 'Formulare ohne Submit-Button',
+    description: 'Formulare haben keinen Absende-Button.',
+    fix: '<button type="submit">Absenden</button> zu allen Formularen hinzufügen'
+  },
+  'WCAG2AA.Principle3.Guideline3_3.3_3_1.G83': {
+    title: 'Fehlermeldungen fehlen',
+    description: 'Formulare zeigen keine klaren Fehlermeldungen.',
+    fix: 'Verständliche Fehlermeldungen hinzufügen: "Bitte E-Mail-Adresse eingeben"'
+  },
+  'WCAG2AA.Principle3.Guideline3_3.3_3_2.G131': {
+    title: 'Pflichtfelder nicht gekennzeichnet',
+    description: 'Erforderliche Formularfelder sind nicht erkennbar.',
+    fix: 'Pflichtfelder mit * markieren und "Pflichtfeld" Label hinzufügen'
+  },
+  'WCAG2AA.Principle1.Guideline1_1.1_1_1.H67.1': {
+    title: 'Problematische Bild-Attribute',
+    description: 'Bilder mit leerem alt-Text haben trotzdem einen title.',
+    fix: 'Entweder title-Attribut entfernen oder sinnvollen alt-Text hinzufügen'
+  },
+  'WCAG2AA.Principle1.Guideline1_1.1_1_1.G94.Image': {
+    title: 'Bilder ohne Alt-Text',
+    description: 'Informative Bilder haben keinen Alternativtext.',
+    fix: 'Alt-Text hinzufügen: <img src="logo.jpg" alt="Firmenlogo ReguKit">'
+  },
+  'WCAG2AA.Principle2.Guideline2_4.2_4_7.G149': {
+    title: 'Fokus nicht sichtbar',
+    description: 'Keyboard-Navigation zeigt nicht welches Element aktiv ist.',
+    fix: 'CSS hinzufügen: :focus { outline: 2px solid #0066cc; border-radius: 2px; }'
+  },
+  'WCAG2AA.Principle1.Guideline1_3.1_3_1_A.G141': {
+    title: 'Falsche Überschriften-Struktur',
+    description: 'Überschriften-Hierarchie ist unlogisch.',
+    fix: 'Überschriften korrekt verschachteln: H1 → H2 → H3, nie H1 → H3'
+  },
+  'WCAG2AA.Principle1.Guideline1_4.1_4_4.G142': {
+    title: 'Text nicht skalierbar',
+    description: 'Text kann nicht auf 200% vergrößert werden.',
+    fix: 'Relative Einheiten verwenden (em, rem) statt feste Pixel-Werte'
+  },
+  'WCAG2AA.Principle1.Guideline1_3.1_3_1.H42': {
+    title: 'Falsche Überschriften-Tags',
+    description: 'Text sieht aus wie Überschrift, aber verwendet falsche HTML-Tags.',
+    fix: 'Richtige Überschriften-Tags verwenden: <h2>Titel</h2> statt <p><strong>Titel</strong></p>'
+  },
+  'WCAG2AA.Principle2.Guideline2_4.2_4_1.G1': {
+    title: 'Keine Skip-Links',
+    description: 'Navigation kann nicht übersprungen werden.',
+    fix: 'Skip-Link hinzufügen: <a href="#main">Zum Hauptinhalt springen</a>'
+  },
+  'WCAG2AA.Principle4.Guideline4_1.4_1_2.H91.A.Placeholder': {
+    title: 'Links ohne Text',
+    description: 'Links haben keinen erkennbaren Text oder Beschreibung.',
+    fix: 'Linktext hinzufügen oder aria-label verwenden: <a aria-label="Zur Startseite">🏠</a>'
+  },
+  'WCAG2AA.Principle1.Guideline1_1.1_1_1.H67.2': {
+    title: 'Dekorative Bilder falsch markiert',
+    description: 'Schmuckbilder haben unnötigen title-Text.',
+    fix: 'Nur alt="" für Schmuckbilder, kein title-Attribut'
+  },
+  'WCAG2AA.Principle3.Guideline3_1.3_1_2.H58': {
+    title: 'Sprachangaben fehlen',
+    description: 'Fremdsprachige Texte sind nicht als solche markiert.',
+    fix: 'Lang-Attribut hinzufügen: <span lang="en">Hello World</span>'
+  },
+  'WCAG2AA.Principle1.Guideline1_4.1_4_2.F23': {
+    title: 'Horizontales Scrollen bei Zoom',
+    description: 'Bei 200% Zoom muss horizontal gescrollt werden.',
+    fix: 'Responsive Design verwenden: max-width: 100%, flexible Layouts'
+  },
+  'WCAG2AA.Principle1.Guideline1_3.1_3_1.H48': {
+    title: 'Listen falsch strukturiert',
+    description: 'Aufzählungen verwenden keine korrekten Listen-Tags.',
+    fix: 'Richtige Listen verwenden: <ul><li>Punkt 1</li><li>Punkt 2</li></ul>'
+  }
+};
 
   // Issues gruppieren und deduplizieren
   const grouped = {};
@@ -734,6 +791,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Verbesserter ReguKit A11y Check läuft auf http://localhost:${PORT}`);
   console.log(`💪 Jetzt mit sauberen Reports statt CrapGPT's Chaos!`);
 });
+
 
 
 
