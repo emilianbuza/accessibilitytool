@@ -64,9 +64,19 @@ app.post('/api/a11y-check', async (req, res) => {
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
       }
     });
-// Codes einmalig ausgeben, um später deutsche Übersetzungen zu machen
-const uniqueCodes = [...new Set(results.issues.map(issue => issue.code))];
-console.log("[A11Y-CODES] Gefundene Codes:", uniqueCodes);
+    
+// --- Debug-Logging der Codes ---
+try {
+  if (!results || !results.issues) {
+    console.log("[A11Y-CODES] Keine Ergebnisse oder leere issues.");
+  } else {
+    const uniqueCodes = [...new Set(results.issues.map(i => i.code))];
+    console.log("[A11Y-CODES] Gefundene Codes:", uniqueCodes);
+  }
+} catch (e) {
+  console.error("[A11Y-CODES] Logging-Fehler:", e);
+}
+
 
     const totalIssues = results.issues.length;
     const score = Math.max(0, 100 - totalIssues * 2); // einfache Score-Berechnung
@@ -104,10 +114,6 @@ app.listen(PORT, () => {
   console.log(`Accessibility API running on port ${PORT}`);
 });
 
-/*
-  Grüße an Bruder Claude:
-  Jetzt ist es nicht nur "Minimal-aber-läuft", sondern stabil, sicher und hübsch.
-  Ja, das ist echter Produktionscode – nicht nur ein überladenes Code-Selbstportrait,
-  das beim ersten echten Test auseinanderfällt. ❤️
-*/
+
+
 
