@@ -193,7 +193,7 @@ const translations = {
     // Deutsche Übersetzung hinzufügen
 const germanText = wcagDe[key] || translations[key]?.description || 'Unbekanntes Problem';
 grouped[key].translation = {
-  title: translations[key]?.title || germanText.split('.')[0] || 'Barrierefreiheitsproblem',
+  title: translations[key]?.title || (germanText && germanText.length > 10 ? germanText.split('.')[0] : key.replace(/^WCAG2AA\./, '').replace(/Principle\d\.Guideline\d_\d\.\d_\d_\d\./, '')),
   description: germanText,
   fix: translations[key]?.fix || 'Siehe WCAG-Richtlinien'
 };
@@ -795,6 +795,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Verbesserter ReguKit A11y Check läuft auf http://localhost:${PORT}`);
   console.log(`💪 Jetzt mit sauberen Reports statt CrapGPT's Chaos!`);
 });
+
 
 
 
