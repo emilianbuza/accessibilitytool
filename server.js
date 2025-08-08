@@ -152,11 +152,6 @@ const translations = {
     description: 'Schmuckbilder haben unnötigen title-Text.',
     fix: 'Nur alt="" für Schmuckbilder, kein title-Attribut'
   },
-  'WCAG2AA.Principle3.Guideline3_1.3_1_2.H58': {
-    title: 'Sprachangaben fehlen',
-    description: 'Fremdsprachige Texte sind nicht als solche markiert.',
-    fix: 'Lang-Attribut hinzufügen: <span lang="en">Hello World</span>'
-  },
   'WCAG2AA.Principle1.Guideline1_4.1_4_2.F23': {
     title: 'Horizontales Scrollen bei Zoom',
     description: 'Bei 200% Zoom muss horizontal gescrollt werden.',
@@ -166,7 +161,47 @@ const translations = {
     title: 'Listen falsch strukturiert',
     description: 'Aufzählungen verwenden keine korrekten Listen-Tags.',
     fix: 'Richtige Listen verwenden: <ul><li>Punkt 1</li><li>Punkt 2</li></ul>'
-  }
+  },
+'WCAG2AA.Principle2.Guideline2_4.2_4_6.G130': {
+  title: 'Es gibt keine visuelle Hervorhebung der aktuellen Position',
+  description: 'Nutzer wissen nicht wo sie sich befinden.',
+  fix: 'Breadcrumb-Navigation oder aktuelle Seite markieren'
+},
+  'WCAG2AA.Principle3.Guideline3_1.3_1_2.H58': {
+    title: 'Sprachangaben fehlen',
+    description: 'Fremdsprachige Texte sind nicht markiert.',
+    fix: 'Lang-Attribut hinzufügen: <span lang="en">Hello World</span>'
+  },
+'WCAG2AA.Principle2.Guideline2_4.2_4_1.G1,G123,G124.NoSuchID': {
+  title: 'Link verweist auf nicht existierende Anker-ID',
+  description: 'Links zeigen auf Ziele die nicht vorhanden sind.',
+  fix: 'Kaputte Anker-Links (#section1) reparieren oder entfernen'
+},
+'WCAG2AA.Principle2.Guideline2_4.2_4_6.G130,G131': {
+  title: 'Keine Orientierungshilfe auf der Website',
+  description: 'Nutzer wissen nicht wo sie sich befinden.',
+  fix: 'Breadcrumb-Navigation hinzufügen: Home > Kategorie > Aktuelle Seite'
+},
+'WCAG2AA.Principle3.Guideline3_3.3_3_4.G98,G99,G155,G164,G168.LegalForms': {
+  title: 'Bei rechtlich verbindlichen Formularen fehlen Bestätigungsschritte',
+  description: 'Wichtige Formulare haben keine Bestätigung.',
+  fix: 'Bestätigungsseite hinzufügen: "Sind Sie sicher? [Ja] [Nein]"'
+},
+'WCAG2AA.Principle1.Guideline1_4.1_4_10.C32,C31,C33,C38,SCR34,G206': {
+  title: 'Zoom wird behindert',
+  description: 'Website kann nicht richtig gezoomt werden.',
+  fix: 'viewport meta-tag anpassen: <meta name="viewport" content="width=device-width, initial-scale=1">'
+},
+'WCAG2AA.Principle1.Guideline1_1.1_1_1.G73,G74': {
+  title: 'Komplexe Bilder ohne ausführliche Beschreibung',
+  description: 'Diagramme/Charts haben nur kurzen alt-Text.',
+  fix: 'Ausführliche Beschreibung in Text daneben oder per aria-describedby'
+},
+'WCAG2AA.Principle1.Guideline1_4.1_4_3.G145.Fail': {
+  title: 'Kontrast zu niedrig (große Schrift)',
+  description: 'Große Schrift hat weniger als 3:1 Kontrast.',
+  fix: 'Kontrast für große Texte (18pt+) auf mindestens 3:1 erhöhen'
+}
 };
 
   // Issues gruppieren und deduplizieren
@@ -795,6 +830,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Verbesserter ReguKit A11y Check läuft auf http://localhost:${PORT}`);
   console.log(`💪 Jetzt mit sauberen Reports statt CrapGPT's Chaos!`);
 });
+
 
 
 
