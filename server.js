@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3040;
 app.use(express.json({ limit: '1mb' }));
 app.use(cors());
 
-// --- URL-Check ---
+// URL prüfen
 const isValidUrl = (str) => {
   try {
     const u = new URL(str);
@@ -18,7 +18,7 @@ const isValidUrl = (str) => {
   }
 };
 
-// --- Score-Berechnung ---
+// Score berechnen
 function scoreFromCounts({ errors, warnings, notices }) {
   const penalty = Math.min(100, errors * 4 + warnings * 1 + Math.floor(notices * 0.25));
   const score = Math.max(0, 100 - penalty);
@@ -44,24 +44,26 @@ function groupIssues(issues) {
     .sort((a, b) => (order[a.type] - order[b.type]) || (b.count - a.count));
 }
 
-// --- API: Barrierefreiheits-Check ---
+// API-Endpunkt
 app.post('/api/a11y-check', async (req, res) => {
   const { url } = req.body || {};
   if (!url || !isValidUrl(url)) {
     return res.status(400).json({ error: 'Bitte eine gültige URL mit http(s) angeben.' });
   }
 
+  console.log(`[A11Y-CHECK] Starte Analyse für: ${url}`);
+
   try {
     const results = await pa11y(url, {
-      standard: 'WCAG2.1AA',       // neu: WCAG 2.1
+      standard: 'WCAG2.1AA',
       includeNotices: true,
       includeWarnings: true,
-      timeout: 90000,              // mehr Zeit
-      wait: 1000,                  // warten nach Laden
-      chromeLaunchConfig: {        // wichtig für Render
+      timeout: 90000, // 90 Sekunden
+      wait: 1000,
+      chromeLaunchConfig: {
         args: ['--no-sandbox', '--disable-setuid-sandbox']
       },
-      headers: {                   // echter Browser UA
+      headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127 Safari/537.36'
       }
     });
@@ -86,12 +88,12 @@ app.post('/api/a11y-check', async (req, res) => {
       issues: grouped,
     });
   } catch (err) {
-    console.error('pa11y error:', err.message);
-    res.status(500).json({ error: 'Analyse fehlgeschlagen. Die Site blockiert evtl. Bots/CORS oder ist nicht erreichbar.' });
+    console.error('[A11Y-CHECK] Fehler bei Analyse:', err);
+    res.status(500).json({ error: 'Analyse fehlgeschlagen: ' + err.message });
   }
 });
 
-// --- Widget-Script ---
+// Widget
 app.get('/embed.js', (_req, res) => {
   res.type('application/javascript').send(`(function(){
     const SCRIPT = document.currentScript;
@@ -104,7 +106,6 @@ app.get('/embed.js', (_req, res) => {
       const form=h('form',{style:{display:'flex',gap:'8px',marginBottom:'12px'}});
       const input=h('input',{type:'url',placeholder:'https://example.com',required:'required',style:{flex:'1',padding:'10px',border:'1px solid #ddd',borderRadius:'8px'}});
       const btn=h('button',{type:'submit',style:{padding:'10px 14px',border:'1px solid #ddd',borderRadius:'8px',cursor:'pointer',background:'white'}},['Prüfen']);
-      const small=h('div',{style:{fontSize:'12px',color:'#666',marginTop:'4px'}},['Hinweis: Externe Seiten können Prüfungen blockieren.']);
       const result=h('div',{style:{marginTop:'12px'}});
       form.addEventListener('submit',async e=>{
         e.preventDefault();
@@ -114,26 +115,23 @@ app.get('/embed.js', (_req, res) => {
         try{
           const res=await fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});
           const data=await res.json();
-          if(!res.ok) throw new Error(data&&data.error||'Fehler');
-          const barBg=h('div',{style:{height:'12px',background:'#f2f2f2',borderRadius:'6px',overflow:'hidden'}});
-          barBg.appendChild(h('div',{style:{width:data.score+'%',height:'100%',background:data.score>=90?'#2ecc71':data.score>=70?'#f1c40f':'#e74c3c'}}));
+          if(!res.ok) throw new Error(data && data.error || 'Fehler');
           result.innerHTML='';
-          result.appendChild(barBg);
-          result.appendChild(h('div',{style:{marginTop:'8px'}},['Score: '+data.score+' • Grade: '+data.grade]));
+          result.appendChild(h('div',null,['Score: '+data.score+' • Grade: '+data.grade]));
         }catch(err){
           result.innerHTML='';
           result.appendChild(h('div',{style:{color:'#e74c3c',fontSize:'14px'}},['Fehler: ',err.message]));
         }
       });
       form.appendChild(input);form.appendChild(btn);
-      wrap.appendChild(title);wrap.appendChild(form);wrap.appendChild(small);wrap.appendChild(result);
+      wrap.appendChild(title);wrap.appendChild(form);wrap.appendChild(result);
       container.appendChild(wrap);
     }
     (function(){let m=document.getElementById('regukit-a11y');if(!m){m=document.createElement('div');m.id='regukit-a11y';(SCRIPT&&SCRIPT.parentNode?SCRIPT.parentNode.insertBefore(m,SCRIPT):document.body.appendChild(m));}render(m);})();
   })();`);
 });
 
-// --- Root-Route ---
+// Root-Seite
 app.get('/', (_req, res) => {
   res.type('text/html').send(`<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>ReguKit A11y Check Widget</title></head><body>
   <h1 style="font-family: system-ui, sans-serif;">ReguKit A11y Check Widget – Demo</h1>
