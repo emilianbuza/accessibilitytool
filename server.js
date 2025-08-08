@@ -18,8 +18,10 @@ app.set('trust proxy', 1);
 // --- Security ---
 app.use(helmet());
 
-// --- CORS: nur für deine Domain freigeben ---
-app.use(express.json()); 
+// --- Body Parser ---
+app.use(express.json());
+
+// --- CORS ---
 app.use(cors({
   origin: [
     'https://regukit.com',
@@ -31,14 +33,13 @@ app.use(cors({
 
 // --- Rate Limiting ---
 const limiter = rateLimit({
-  windowMs: 60 * 1000,      // 1 Minute
-  max: 10,                  // 10 Anfragen pro Minute
-  standardHeaders: true,    // moderne Rate-Limit-Header
-  legacyHeaders: false,     // alte Header aus
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { error: 'Rate limit exceeded. Please wait and try again.' }
 });
 app.use('/api/', limiter);
-
 
 // --- URL-Validierung ---
 function validateUrl(input) {
@@ -58,7 +59,7 @@ function scoreFromCounts({errors, warnings}) {
   return {score, grade};
 }
 
-// --- API ---
+// --- API: A11Y-Check ---
 app.post('/api/a11y-check', async (req, res) => {
   const { url } = req.body;
 
@@ -118,14 +119,25 @@ app.post('/api/a11y-check', async (req, res) => {
       }
     }
 
+    // Übersichtliches Ergebnis
     res.json({
       success: true,
-      url,
+      checkedUrl: url,
       standard: 'WCAG 2.1 AA (pa11y: WCAG2AA)',
       score,
       grade,
-      counts,
-      issues: Object.values(grouped)
+      summary: {
+        errors: counts.errors,
+        warnings: counts.warnings,
+        notices: counts.notices
+      },
+      issues: Object.values(grouped).map(i => ({
+        code: i.code,
+        type: i.type,
+        count: i.count,
+        message: i.message,
+        samples: i.samples
+      }))
     });
 
   } catch (err) {
@@ -137,7 +149,7 @@ app.post('/api/a11y-check', async (req, res) => {
   }
 });
 
-// --- Hinweis-Endpunkt ---
+// --- Info-Endpoint ---
 app.get('/api/a11y-info', (req, res) => {
   res.json({
     info: `Dieser automatisierte Barrierefreiheits-Check prüft WCAG 2.1 AA Kriterien wie Kontraste, Alternativtexte, Struktur, Formularkennzeichnungen und mehr. 
@@ -150,5 +162,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Accessibility API running on port ${PORT}`);
 });
-
-
