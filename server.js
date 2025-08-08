@@ -4,7 +4,14 @@ import rateLimit from 'express-rate-limit';
 import cors from 'cors';
 import pa11y from 'pa11y';
 import { URL } from 'url';
-import wcagDe from './wcag-de.json' assert { type: 'json' };
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
+const wcagDe = JSON.parse(fs.readFileSync(path.join(__dirname, 'wcag-de.json'), 'utf8'));
+
 
 const app = express();
 
@@ -135,6 +142,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Accessibility API running on port ${PORT}`);
 });
+
 
 
 
