@@ -301,47 +301,405 @@ app.post('/api/a11y-check', async (req, res) => {
   }
 });
 
-// Widget (bleibt gleich wie bei CrapGPT, funktioniert ja)
+// ERSETZE den /embed.js Endpunkt in deiner server.js mit diesem Code:
+
 app.get('/embed.js', (_req, res) => {
-  res.type('application/javascript').send(`(function(){
-    const SCRIPT = document.currentScript;
-    const ENDPOINT = (SCRIPT && SCRIPT.dataset && SCRIPT.dataset.endpoint) || '/api/a11y-check';
-    function h(t,a,c){const e=document.createElement(t);if(a)Object.entries(a).forEach(([k,v])=>{if(k==='style'&&typeof v==='object')Object.assign(e.style,v);else e.setAttribute(k,v)});(c||[]).forEach(ch=>e.appendChild(typeof ch==='string'?document.createTextNode(ch):ch));return e;}
-    function render(container){
-      container.innerHTML='';
-      const wrap=h('div',{style:{fontFamily:'system-ui,sans-serif',maxWidth:'720px',border:'1px solid #eee',borderRadius:'12px',padding:'16px',boxShadow:'0 2px 10px rgba(0,0,0,0.04)'}});
-      const title=h('div',{style:{fontWeight:'700',fontSize:'18px',marginBottom:'8px'}},['Barrierefreiheits-Check (WCAG 2.1 AA)']);
-      const form=h('form',{style:{display:'flex',gap:'8px',marginBottom:'12px'}});
-      const input=h('input',{type:'url',placeholder:'https://example.com',required:'required',style:{flex:'1',padding:'10px',border:'1px solid #ddd',borderRadius:'8px'}});
-      const btn=h('button',{type:'submit',style:{padding:'10px 14px',border:'1px solid #ddd',borderRadius:'8px',cursor:'pointer',background:'white'}},['Prüfen']);
-      const result=h('div',{style:{marginTop:'12px'}});
-      form.addEventListener('submit',async e=>{
-        e.preventDefault();
-        result.innerHTML='';
-        const url=input.value.trim();
-        result.appendChild(h('div',{style:{fontSize:'14px'}},['Analysiere…']));
-        try{
-          const res=await fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});
-          const data=await res.json();
-          if(!res.ok || !data.success) throw new Error(data && data.error || 'Fehler');
-          result.innerHTML='';
-          // VERBESSERTE ANZEIGE:
-          result.appendChild(h('div',{style:{padding:'12px',background:data.score>=70?'#dcfce7':'#fef2f2',border:'1px solid '+(data.score>=70?'#16a34a':'#dc2626'),borderRadius:'8px'}}, [
-            'Score: '+data.score+'/100 • Note: '+data.grade+' • '+data.assessment,
-            h('br'),
-            'Kritische Probleme: '+data.summary.criticalCount+' • Warnungen: '+data.summary.warningCount
-          ]));
-        }catch(err){
-          result.innerHTML='';
-          result.appendChild(h('div',{style:{color:'#e74c3c',fontSize:'14px'}},['Fehler: ',err.message]));
+  const improvedWidget = `
+(function() {
+  'use strict';
+  
+  const SCRIPT = document.currentScript;
+  const ENDPOINT = (SCRIPT?.dataset?.endpoint) || '/api/a11y-check';
+  
+  function createElement(tag, attributes = {}, children = []) {
+    const element = document.createElement(tag);
+    
+    Object.entries(attributes).forEach(([key, value]) => {
+      if (key === 'style' && typeof value === 'object') {
+        Object.assign(element.style, value);
+      } else if (key === 'onClick') {
+        element.addEventListener('click', value);
+      } else {
+        element.setAttribute(key, value);
+      }
+    });
+    
+    children.forEach(child => {
+      if (typeof child === 'string') {
+        element.appendChild(document.createTextNode(child));
+      } else if (child instanceof Node) {
+        element.appendChild(child);
+      }
+    });
+    
+    return element;
+  }
+  
+  function renderWidget(container) {
+    container.innerHTML = '';
+    
+    const wrapper = createElement('div', {
+      style: {
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        maxWidth: '800px',
+        border: '2px solid #e5e7eb',
+        borderRadius: '12px',
+        padding: '20px',
+        backgroundColor: '#ffffff',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        lineHeight: '1.5'
+      }
+    });
+    
+    const title = createElement('div', {
+      style: {
+        fontWeight: '700',
+        fontSize: '20px',
+        marginBottom: '16px',
+        color: '#1f2937',
+        borderBottom: '2px solid #f3f4f6',
+        paddingBottom: '12px'
+      }
+    }, ['🔍 Barrierefreiheits-Check (WCAG 2.1 AA)']);
+    
+    const form = createElement('form', {
+      style: {
+        display: 'flex',
+        gap: '12px',
+        marginBottom: '20px',
+        flexWrap: 'wrap'
+      }
+    });
+    
+    const inputWrapper = createElement('div', {
+      style: { flex: '1', minWidth: '300px' }
+    });
+    
+    const input = createElement('input', {
+      type: 'url',
+      placeholder: 'https://example.com',
+      required: 'required',
+      style: {
+        width: '100%',
+        padding: '12px',
+        border: '1px solid #d1d5db',
+        borderRadius: '8px',
+        fontSize: '16px',
+        boxSizing: 'border-box'
+      }
+    });
+    
+    const button = createElement('button', {
+      type: 'submit',
+      style: {
+        padding: '12px 20px',
+        border: 'none',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        backgroundColor: '#3b82f6',
+        color: '#ffffff',
+        fontSize: '16px',
+        fontWeight: '600'
+      }
+    }, ['Prüfen']);
+    
+    const resultContainer = createElement('div', {
+      style: { marginTop: '20px' }
+    });
+    
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const url = input.value.trim();
+      if (!url) return;
+      
+      resultContainer.innerHTML = '';
+      button.disabled = true;
+      button.textContent = 'Analysiere...';
+      
+      const loadingDiv = createElement('div', {
+        style: {
+          padding: '20px',
+          textAlign: 'center',
+          backgroundColor: '#f3f4f6',
+          borderRadius: '8px',
+          fontSize: '14px'
+        }
+      }, ['🔄 Website wird analysiert, bitte warten...']);
+      
+      resultContainer.appendChild(loadingDiv);
+      
+      try {
+        const response = await fetch(ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        
+        const data = await response.json();
+        
+        resultContainer.innerHTML = '';
+        
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Unbekannter Fehler');
+        }
+        
+        renderResults(resultContainer, data);
+        
+      } catch (error) {
+        resultContainer.innerHTML = '';
+        const errorDiv = createElement('div', {
+          style: {
+            padding: '16px',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #dc2626',
+            borderRadius: '8px',
+            color: '#dc2626',
+            fontSize: '14px'
+          }
+        }, ['❌ Fehler: ' + error.message]);
+        
+        resultContainer.appendChild(errorDiv);
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Prüfen';
+      }
+    });
+    
+    inputWrapper.appendChild(input);
+    form.appendChild(inputWrapper);
+    form.appendChild(button);
+    
+    wrapper.appendChild(title);
+    wrapper.appendChild(form);
+    wrapper.appendChild(resultContainer);
+    
+    container.appendChild(wrapper);
+  }
+  
+  function renderResults(container, data) {
+    const scoreColor = data.score >= 90 ? '#059669' : 
+                      data.score >= 70 ? '#eab308' : 
+                      data.score >= 50 ? '#f59e0b' :
+                      '#dc2626';
+    
+    // Score Header
+    const scoreSection = createElement('div', {
+      style: {
+        textAlign: 'center',
+        marginBottom: '20px',
+        padding: '20px',
+        backgroundColor: scoreColor + '20',
+        borderRadius: '12px',
+        border: '2px solid ' + scoreColor
+      }
+    });
+    
+    const scoreText = createElement('div', {
+      style: {
+        fontSize: '2.5rem',
+        fontWeight: '700',
+        color: scoreColor,
+        marginBottom: '8px'
+      }
+    }, [data.score + '/100']);
+    
+    const gradeText = createElement('div', {
+      style: {
+        fontSize: '1.2rem',
+        fontWeight: '600',
+        color: scoreColor,
+        marginBottom: '8px'
+      }
+    }, ['Note: ' + data.grade]);
+    
+    const assessmentText = createElement('div', {
+      style: {
+        fontSize: '0.9rem',
+        color: '#4b5563',
+        fontStyle: 'italic'
+      }
+    }, [data.assessment]);
+    
+    scoreSection.appendChild(scoreText);
+    scoreSection.appendChild(gradeText);
+    scoreSection.appendChild(assessmentText);
+    
+    // Stats Overview
+    const statsSection = createElement('div', {
+      style: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+        gap: '12px',
+        marginBottom: '20px'
+      }
+    });
+    
+    const stats = [
+      { label: 'Kritisch', value: data.summary.criticalCount, color: '#dc2626' },
+      { label: 'Warnungen', value: data.summary.warningCount, color: '#f59e0b' },
+      { label: 'Gesamt', value: data.summary.total, color: '#6b7280' }
+    ];
+    
+    stats.forEach(stat => {
+      const statDiv = createElement('div', {
+        style: {
+          textAlign: 'center',
+          padding: '12px',
+          backgroundColor: stat.color + '20',
+          borderRadius: '8px',
+          border: '1px solid ' + stat.color + '40'
         }
       });
-      form.appendChild(input);form.appendChild(btn);
-      wrap.appendChild(title);wrap.appendChild(form);wrap.appendChild(result);
-      container.appendChild(wrap);
+      
+      const valueDiv = createElement('div', {
+        style: {
+          fontSize: '1.5rem',
+          fontWeight: '700',
+          color: stat.color,
+          marginBottom: '4px'
+        }
+      }, [stat.value.toString()]);
+      
+      const labelDiv = createElement('div', {
+        style: {
+          fontSize: '0.8rem',
+          color: '#4b5563'
+        }
+      }, [stat.label]);
+      
+      statDiv.appendChild(valueDiv);
+      statDiv.appendChild(labelDiv);
+      statsSection.appendChild(statDiv);
+    });
+    
+    // Top Issues
+    if (data.summary.topCritical && data.summary.topCritical.length > 0) {
+      const issuesSection = createElement('div', {
+        style: {
+          marginTop: '20px',
+          padding: '16px',
+          backgroundColor: '#fef2f2',
+          borderRadius: '8px',
+          border: '1px solid #fecaca'
+        }
+      });
+      
+      const issuesTitle = createElement('div', {
+        style: {
+          fontWeight: '600',
+          marginBottom: '12px',
+          color: '#991b1b'
+        }
+      }, ['🚨 Wichtigste Probleme:']);
+      
+      data.summary.topCritical.forEach(issue => {
+        const issueDiv = createElement('div', {
+          style: {
+            padding: '8px 0',
+            borderBottom: '1px solid #fecaca',
+            fontSize: '0.9rem'
+          }
+        });
+        
+        const titleSpan = createElement('span', {
+          style: { fontWeight: '600', color: '#1f2937' }
+        }, [issue.title]);
+        
+        const countSpan = createElement('span', {
+          style: {
+            backgroundColor: '#dc2626',
+            color: 'white',
+            padding: '2px 6px',
+            borderRadius: '10px',
+            fontSize: '0.7rem',
+            marginLeft: '8px'
+          }
+        }, [issue.count + 'x']);
+        
+        issueDiv.appendChild(titleSpan);
+        issueDiv.appendChild(countSpan);
+        
+        if (issue.fix) {
+          const fixDiv = createElement('div', {
+            style: {
+              marginTop: '4px',
+              fontSize: '0.8rem',
+              color: '#6b7280',
+              fontStyle: 'italic'
+            }
+          }, ['💡 ' + issue.fix]);
+          issueDiv.appendChild(fixDiv);
+        }
+        
+        issuesSection.appendChild(issueDiv);
+      });
+      
+      container.appendChild(scoreSection);
+      container.appendChild(statsSection);
+      container.appendChild(issuesSection);
+    } else {
+      container.appendChild(scoreSection);
+      container.appendChild(statsSection);
     }
-    (function(){let m=document.getElementById('regukit-a11y');if(!m){m=document.createElement('div');m.id='regukit-a11y';(SCRIPT&&SCRIPT.parentNode?SCRIPT.parentNode.insertBefore(m,SCRIPT):document.body.appendChild(m));}render(m);})();
-  })();`);
+    
+    // Quick Wins
+    if (data.summary.quickWins && data.summary.quickWins.length > 0) {
+      const quickWinsSection = createElement('div', {
+        style: {
+          marginTop: '16px',
+          padding: '12px',
+          backgroundColor: '#ecfdf5',
+          borderRadius: '8px',
+          border: '1px solid #a7f3d0'
+        }
+      });
+      
+      const quickWinsTitle = createElement('div', {
+        style: {
+          fontWeight: '600',
+          marginBottom: '8px',
+          color: '#065f46'
+        }
+      }, ['🎯 Schnell behebbar:']);
+      
+      const quickWinsList = createElement('div', {
+        style: { fontSize: '0.85rem', color: '#047857' }
+      }, [data.summary.quickWins.join(' • ')]);
+      
+      quickWinsSection.appendChild(quickWinsTitle);
+      quickWinsSection.appendChild(quickWinsList);
+      container.appendChild(quickWinsSection);
+    }
+  }
+  
+  // Widget initialisieren
+  function initWidget() {
+    let container = document.getElementById('regukit-a11y');
+    
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'regukit-a11y';
+      
+      if (SCRIPT && SCRIPT.parentNode) {
+        SCRIPT.parentNode.insertBefore(container, SCRIPT);
+      } else {
+        document.body.appendChild(container);
+      }
+    }
+    
+    renderWidget(container);
+  }
+  
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initWidget);
+  } else {
+    initWidget();
+  }
+})();
+  `;
+
+  res.type('application/javascript').send(improvedWidget);
 });
 
 // Demo-Seite
@@ -358,3 +716,4 @@ app.listen(PORT, () => {
   console.log(`🚀 Verbesserter ReguKit A11y Check läuft auf http://localhost:${PORT}`);
   console.log(`💪 Jetzt mit sauberen Reports statt CrapGPT's Chaos!`);
 });
+
