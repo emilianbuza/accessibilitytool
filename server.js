@@ -13,6 +13,7 @@ const __dirname  = path.dirname(__filename);
 const wcagDe = JSON.parse(fs.readFileSync(path.join(__dirname, 'wcag-de.json'), 'utf8'));
 
 const app = express();
+app.set('trust proxy', true);
 
 // --- Security ---
 app.use(helmet());
@@ -29,14 +30,14 @@ app.use(cors({
 
 // --- Rate Limiting ---
 const limiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 10,
+  windowMs: 60 * 1000,      // 1 Minute
+  max: 10,                  // 10 Anfragen pro Minute
+  standardHeaders: true,    // moderne Rate-Limit-Header
+  legacyHeaders: false,     // alte Header aus
   message: { error: 'Rate limit exceeded. Please wait and try again.' }
 });
 app.use('/api/', limiter);
 
-// --- Body Parser ---
-app.use(express.json());
 
 // --- URL-Validierung ---
 function validateUrl(input) {
@@ -148,3 +149,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Accessibility API running on port ${PORT}`);
 });
+
