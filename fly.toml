@@ -8,7 +8,7 @@ primary_region = "fra"
   NODE_ENV = "production"
 
 [http_service]
-  internal_port = 3000
+  internal_port = 3040
   force_https = true
   auto_stop_machines = true
   auto_start_machines = true
@@ -26,3 +26,4 @@ primary_region = "fra"
   memory = "2gb"
   cpu_kind = "shared"
   cpus = 1
+
