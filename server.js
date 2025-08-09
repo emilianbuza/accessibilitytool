@@ -826,10 +826,11 @@ app.get('/', (_req, res) => {
   </body></html>`);
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Verbesserter ReguKit A11y Check läuft auf http://localhost:${PORT}`);
-  console.log(`💪 Jetzt mit sauberen Reports statt CrapGPT's Chaos!`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 ReguKit A11y Check läuft auf Port ${PORT}`);
+  console.log(`💪 Jetzt mit sauberen Reports!`);
 });
+
 
 
 
