@@ -23,13 +23,8 @@ primary_region = "fra"  # Frankfurt - gut für Deutschland
   method = "GET"
   path = "/"
 
+# VM Konfiguration - nur EINE Section
 [vm]
-  memory = "1gb"
-  cpu_kind = "shared"
-  cpus = 1
-
-# Für pa11y/Chromium braucht's mehr RAM
-[[vm]]
-  memory = "2gb"  # pa11y ist speicherhungrig
+  memory = "2gb"  # pa11y/Chromium braucht mehr RAM
   cpu_kind = "shared"
   cpus = 1
