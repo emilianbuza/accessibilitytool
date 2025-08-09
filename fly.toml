@@ -2,7 +2,10 @@ app = "accessibilitytool"
 primary_region = "fra"
 
 [build]
-  builder = "heroku/buildpacks:20"
+  # Neuer, unterstützter Builder
+  builder = "heroku/builder:24"
+  # Sag klar: Das ist eine Node-App
+  buildpacks = ["heroku/nodejs"]
 
 [env]
   NODE_ENV = "production"
@@ -26,4 +29,3 @@ primary_region = "fra"
   memory = "2gb"
   cpu_kind = "shared"
   cpus = 1
-
