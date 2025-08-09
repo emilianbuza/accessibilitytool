@@ -1,7 +1,5 @@
-# fly.toml - Erstelle diese Datei im Root-Verzeichnis
-
 app = "accessibilitytool"
-primary_region = "fra"  # Frankfurt - gut für Deutschland
+primary_region = "fra"
 
 [build]
 
@@ -23,8 +21,7 @@ primary_region = "fra"  # Frankfurt - gut für Deutschland
   method = "GET"
   path = "/"
 
-# VM Konfiguration - nur EINE Section
 [vm]
-  memory = "2gb"  # pa11y/Chromium braucht mehr RAM
+  memory = "2gb"
   cpu_kind = "shared"
   cpus = 1
