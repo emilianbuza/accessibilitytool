@@ -374,4 +374,21 @@ app.get('/', (_req, res) => {
 </body>
 </html>`);
 });
+// ===== Server starten =====
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server läuft auf Port ${PORT}`);
+  console.log(`📊 A11y-Check verfügbar unter: http://localhost:${PORT}`);
+  console.log(`🌍 Externe URL: https://deine-app.onrender.com`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('👋 Server wird heruntergefahren...');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('👋 Server wird heruntergefahren...');
+  process.exit(0);
+});
 
