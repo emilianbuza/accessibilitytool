@@ -403,7 +403,7 @@
     // PDF Export Button hinzufügen
     addPdfExportButton(container, data);
   }
-
+  
   // ---------- Details (Tabs) ----------
   function renderDetails(container, issues) {
     const detailsBtn = el('button', {
