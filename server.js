@@ -369,12 +369,9 @@ app.get('/', (_req, res) => {
   <h1>Verbesserter A11y Check Widget – Jetzt mit sauberen Reports! 🚀</h1>
   <p>Keine Wall-of-Text mehr, sondern strukturierte, verständliche Ergebnisse.</p>
   <div id="regukit-a11y"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="/embed.js" data-endpoint="/api/a11y-check"></script>
 </body>
 </html>`);
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 ReguKit A11y Check läuft auf Port ${PORT}`);
-  console.log(`💪 Jetzt mit sauberen Reports!`);
-});
