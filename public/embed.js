@@ -210,40 +210,31 @@ stats.forEach(stat => {
       padding: '16px',
       textAlign: 'center',
       transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-      cursor: 'pointer', // <- WICHTIG: Zeigt dass es klickbar ist
+      cursor: 'pointer', // Zeigt dass es klickbar ist
       position: 'relative'
     }
   });
 
-  // Click-Handler hinzufügen
+  // Filter-Funktion beim Klick
   card.addEventListener('click', () => {
-    // Scroll zu Details und öffne den entsprechenden Tab
-    const detailsContainer = container.querySelector('[id^="a11y-details-"]');
-    if (detailsContainer) {
-      // Erst Details aufklappen falls zu
-      const detailsBtn = detailsContainer.previousElementSibling;
-      if (detailsContainer.style.display === 'none') {
-        detailsBtn.click(); // Öffnet die Details
-      }
-      
-      // Dann zum entsprechenden Tab
+    // Bestimme Ziel-Tab basierend auf Label
+    let targetTab;
+    if (stat.label === 'Kritisch') targetTab = 'critical';
+    else if (stat.label === 'Warnungen') targetTab = 'warning';
+    else targetTab = 'low'; // Gesamt/Hinweise
+    
+    // Klicke den entsprechenden Tab
+    const tabBtn = document.querySelector('#tab-' + targetTab);
+    if (tabBtn) {
+      tabBtn.click();
+      // Smooth scroll zu den Details
       setTimeout(() => {
-        let targetTab;
-        if (stat.label === 'Kritisch') targetTab = 'critical';
-        else if (stat.label === 'Warnungen') targetTab = 'warning';
-        else targetTab = 'low'; // Gesamt zeigt alle (oder 'low' für Hinweise)
-        
-        const tabButton = detailsContainer.querySelector(`#tab-${targetTab}`);
-        if (tabButton) {
-          tabButton.click();
-          // Smooth scroll zu den Details
-          detailsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        tabBtn.scrollIntoView({behavior: 'smooth', block: 'center'});
       }, 100);
     }
   });
 
-  // Hover-Effekte verbessern
+  // Verbesserte Hover-Effekte
   card.addEventListener('mouseenter', () => {
     card.style.transform = 'translateY(-4px) scale(1.02)';
     card.style.boxShadow = `0 12px 25px ${stat.color}30`;
@@ -255,25 +246,6 @@ stats.forEach(stat => {
     card.style.boxShadow = 'none';
     card.style.borderColor = `${stat.color}20`;
   });
-
-  // Click-Indikator hinzufügen
-  const clickHint = el('div', {
-    style: {
-      position: 'absolute',
-      top: '8px',
-      right: '8px',
-      width: '20px',
-      height: '20px',
-      background: `${stat.color}20`,
-      borderRadius: '50%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: '10px',
-      color: stat.color,
-      fontWeight: '700'
-    }
-  }, ['▼']);
 
   const iconDiv = el('div', { style: { fontSize: '1.5rem', marginBottom: '8px' }}, [stat.icon]);
   const valueDiv = el('div', {
@@ -293,12 +265,10 @@ stats.forEach(stat => {
     }
   }, [stat.label]);
 
-  card.appendChild(clickHint);
   card.appendChild(iconDiv);
   card.appendChild(valueDiv);
   card.appendChild(labelDiv);
   statsGrid.appendChild(card);
-  card.onclick = () => alert('Card geklickt: ' + stat.label); // <- NEU
 });
 
     container.appendChild(scoreCard);
