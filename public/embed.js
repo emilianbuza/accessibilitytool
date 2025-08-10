@@ -198,52 +198,107 @@
       }
     ];
 
-    stats.forEach(stat => {
-      const card = el('div', {
-        style: {
-          background: stat.bg,
-          border: `2px solid ${stat.color}20`,
-          borderRadius: '12px',
-          padding: '16px',
-          textAlign: 'center',
-          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-          cursor: 'default'
+  // In deiner embed.js, in der renderResults Funktion
+// Ersetze den "stats.forEach" Teil mit diesem Code:
+
+stats.forEach(stat => {
+  const card = el('div', {
+    style: {
+      background: stat.bg,
+      border: `2px solid ${stat.color}20`,
+      borderRadius: '12px',
+      padding: '16px',
+      textAlign: 'center',
+      transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+      cursor: 'pointer', // <- WICHTIG: Zeigt dass es klickbar ist
+      position: 'relative'
+    }
+  });
+
+  // Click-Handler hinzufügen
+  card.addEventListener('click', () => {
+    // Scroll zu Details und öffne den entsprechenden Tab
+    const detailsContainer = container.querySelector('[id^="a11y-details-"]');
+    if (detailsContainer) {
+      // Erst Details aufklappen falls zu
+      const detailsBtn = detailsContainer.previousElementSibling;
+      if (detailsContainer.style.display === 'none') {
+        detailsBtn.click(); // Öffnet die Details
+      }
+      
+      // Dann zum entsprechenden Tab
+      setTimeout(() => {
+        let targetTab;
+        if (stat.label === 'Kritisch') targetTab = 'critical';
+        else if (stat.label === 'Warnungen') targetTab = 'warning';
+        else targetTab = 'low'; // Gesamt zeigt alle (oder 'low' für Hinweise)
+        
+        const tabButton = detailsContainer.querySelector(`#tab-${targetTab}`);
+        if (tabButton) {
+          tabButton.click();
+          // Smooth scroll zu den Details
+          detailsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-      });
+      }, 100);
+    }
+  });
 
-      card.addEventListener('mouseenter', () => {
-        card.style.transform = 'translateY(-2px)';
-        card.style.boxShadow = `0 8px 20px ${stat.color}20`;
-      });
+  // Hover-Effekte verbessern
+  card.addEventListener('mouseenter', () => {
+    card.style.transform = 'translateY(-4px) scale(1.02)';
+    card.style.boxShadow = `0 12px 25px ${stat.color}30`;
+    card.style.borderColor = `${stat.color}60`;
+  });
 
-      card.addEventListener('mouseleave', () => {
-        card.style.transform = 'translateY(0)';
-        card.style.boxShadow = 'none';
-      });
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = 'translateY(0) scale(1)';
+    card.style.boxShadow = 'none';
+    card.style.borderColor = `${stat.color}20`;
+  });
 
-      const iconDiv = el('div', { style: { fontSize: '1.5rem', marginBottom: '8px' }}, [stat.icon]);
-      const valueDiv = el('div', {
-        style: {
-          fontSize: '2rem',
-          fontWeight: '800',
-          color: stat.color,
-          marginBottom: '4px'
-        }
-      }, [String(stat.value)]);
-      const labelDiv = el('div', {
-        style: {
-          fontSize: '0.875rem',
-          color: stat.color,
-          fontWeight: '600',
-          opacity: '0.8'
-        }
-      }, [stat.label]);
+  // Click-Indikator hinzufügen
+  const clickHint = el('div', {
+    style: {
+      position: 'absolute',
+      top: '8px',
+      right: '8px',
+      width: '20px',
+      height: '20px',
+      background: `${stat.color}20`,
+      borderRadius: '50%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '10px',
+      color: stat.color,
+      fontWeight: '700'
+    }
+  }, ['▼']);
 
-      card.appendChild(iconDiv);
-      card.appendChild(valueDiv);
-      card.appendChild(labelDiv);
-      statsGrid.appendChild(card);
-    });
+  const iconDiv = el('div', { style: { fontSize: '1.5rem', marginBottom: '8px' }}, [stat.icon]);
+  const valueDiv = el('div', {
+    style: {
+      fontSize: '2rem',
+      fontWeight: '800',
+      color: stat.color,
+      marginBottom: '4px'
+    }
+  }, [String(stat.value)]);
+  const labelDiv = el('div', {
+    style: {
+      fontSize: '0.875rem',
+      color: stat.color,
+      fontWeight: '600',
+      opacity: '0.8'
+    }
+  }, [stat.label]);
+
+  card.appendChild(clickHint);
+  card.appendChild(iconDiv);
+  card.appendChild(valueDiv);
+  card.appendChild(labelDiv);
+  statsGrid.appendChild(card);
+});
 
     container.appendChild(scoreCard);
     container.appendChild(statsGrid);
