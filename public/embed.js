@@ -210,7 +210,7 @@ stats.forEach(stat => {
       padding: '16px',
       textAlign: 'center',
       transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-      cursor: 'pointer', // Zeigt dass es klickbar ist
+      cursor: 'pointer',
       position: 'relative'
     }
   });
@@ -221,16 +221,28 @@ stats.forEach(stat => {
     let targetTab;
     if (stat.label === 'Kritisch') targetTab = 'critical';
     else if (stat.label === 'Warnungen') targetTab = 'warning';
-    else targetTab = 'low'; // Gesamt/Hinweise
+    else targetTab = 'low';
     
-    // Klicke den entsprechenden Tab
-    const tabBtn = document.querySelector('#tab-' + targetTab);
-    if (tabBtn) {
+    // Prüfe ob Details offen sind, falls nicht → öffnen
+    let tabBtn = document.querySelector('#tab-' + targetTab);
+    if (!tabBtn) {
+      // Details sind zu - öffne sie erst
+      const detailsBtn = document.querySelector('button[aria-expanded="false"]');
+      if (detailsBtn) {
+        detailsBtn.click();
+        // Warte bis Tabs geladen sind, dann klicke
+        setTimeout(() => {
+          const newTabBtn = document.querySelector('#tab-' + targetTab);
+          if (newTabBtn) {
+            newTabBtn.click();
+            newTabBtn.scrollIntoView({behavior: 'smooth', block: 'center'});
+          }
+        }, 300);
+      }
+    } else {
+      // Details bereits offen - direkt klicken
       tabBtn.click();
-      // Smooth scroll zu den Details
-      setTimeout(() => {
-        tabBtn.scrollIntoView({behavior: 'smooth', block: 'center'});
-      }, 100);
+      tabBtn.scrollIntoView({behavior: 'smooth', block: 'center'});
     }
   });
 
