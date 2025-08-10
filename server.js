@@ -941,15 +941,6 @@ function renderDetails(container, issues) {
   container.appendChild(tabContent);
 }
 
-  function groupByCategory(issues){
-    const cats = {
-      'Navigation & Links': [],
-      'Farben & Kontrast': [],
-      'Formulare': [],
-      'Bilder & Medien': [],
-      'Überschriften & Struktur': [],
-      'Sonstiges': []
-    };
     issues.forEach(i=>{
       const code = String(i.code||'').toLowerCase();
       const title = String(i.translation?.title || '').toLowerCase();
@@ -962,15 +953,6 @@ function renderDetails(container, issues) {
     });
     Object.keys(cats).forEach(k=>{ if (!cats[k].length) delete cats[k]; });
     return cats;
-  }
-  function dedupe(arr){ const s=new Set(); return (arr||[]).filter(x=>x && !s.has(x) && s.add(x)); }
-  function pretty(sel){
-    return String(sel||'')
-      .replace(/^html\\s*>\\s*body\\s*>\\s*/i,'')
-      .replace(/\\s*>\\s*/g,' › ')
-      .replace(/:nth-child\\(\\d+\\)/g,'')
-      .replace(/\\s{2,}/g,' ')
-      .trim();
   }
 // Verbesserte Tab-Inhalte
 function renderTabContent(panel, issues, color) {
@@ -1196,4 +1178,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 ReguKit A11y Check läuft auf Port ${PORT}`);
   console.log(`💪 Jetzt mit sauberen Reports!`);
 });
+
 
