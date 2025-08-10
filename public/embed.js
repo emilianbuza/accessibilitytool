@@ -298,6 +298,7 @@ stats.forEach(stat => {
   card.appendChild(valueDiv);
   card.appendChild(labelDiv);
   statsGrid.appendChild(card);
+  card.onclick = () => alert('Card geklickt: ' + stat.label); // <- NEU
 });
 
     container.appendChild(scoreCard);
