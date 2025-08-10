@@ -363,34 +363,62 @@ app.get('/embed.js', (_req, res) => {
   const SCRIPT = document.currentScript;
   const ENDPOINT = (SCRIPT && SCRIPT.dataset && SCRIPT.dataset.endpoint) || '/api/a11y-check';
 
-  // ---- Utilities ----
-  function createElement(tag, options={}, children=[]) {
-    const el = document.createElement(tag);
-    const { style={}, attrs={}, type, placeholder, required } = options;
-    if (type) el.type = type;
-    if (placeholder) el.placeholder = placeholder;
-    if (required) el.required = true;
-    Object.keys(attrs||{}).forEach(k => el.setAttribute(k, attrs[k]));
-    Object.assign(el.style, style);
-    children.forEach(child => {
-      if (typeof child === 'string') el.appendChild(document.createTextNode(child));
-      else if (child) el.appendChild(child);
-    });
-    return el;
+  // ---------- Helpers ----------
+  function el(tag, opts={}, children=[]){
+    const n = document.createElement(tag);
+    const { style={}, attrs={}, type, placeholder, required, textContent } = opts;
+    if (type) n.type = type;
+    if (placeholder) n.placeholder = placeholder;
+    if (required) n.required = true;
+    if (textContent != null) n.textContent = textContent;
+    if (attrs) Object.keys(attrs).forEach(k => n.setAttribute(k, attrs[k]));
+    Object.assign(n.style, style);
+    (children||[]).forEach(c => n.appendChild(typeof c==='string' ? document.createTextNode(c) : c));
+    return n;
   }
-  const text = (node, value) => { node.textContent = value == null ? '' : String(value); return node; };
+  const setText = (node, v) => { node.textContent = v == null ? '' : String(v); return node; };
 
-  // ---- Root / Mount ----
-  function mountRoot() {
-    const byId = document.getElementById('regukit-a11y');
-    if (byId) return byId;
-    const host = createElement('div', { attrs:{ id:'regukit-a11y' }, style:{ maxWidth:'900px', margin:'20px auto' }});
+  // ---------- Loading Overlay ----------
+  let overlay;
+  function ensureOverlay(){
+    if (overlay) return overlay;
+    overlay = el('div', {
+      attrs:{ role:'dialog', 'aria-modal':'true', 'aria-label':'Analyse läuft' },
+      style:{
+        position:'fixed', inset:'0', background:'rgba(17,24,39,0.45)',
+        display:'none', alignItems:'center', justifyContent:'center',
+        zIndex:'2147483647', backdropFilter:'blur(1px)'
+      }
+    });
+    const card = el('div', { style:{
+      background:'#fff', borderRadius:'12px', padding:'18px 22px',
+      boxShadow:'0 10px 25px rgba(0,0,0,0.15)', display:'flex', gap:'12px', alignItems:'center'
+    }});
+    const spin = el('div', { style:{ width:'28px', height:'28px' }});
+    spin.innerHTML = '<svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="#E5E7EB" stroke-width="4" fill="none"></circle><path d="M22 12a10 10 0 0 0-10-10" stroke="#3B82F6" stroke-width="4" stroke-linecap="round" fill="none"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.9s" repeatCount="indefinite"/></path></svg>';
+    const txtBox = el('div', { attrs:{ 'aria-live':'polite', role:'status' }}, [
+      el('div', { style:{ fontWeight:'700', color:'#111827', marginBottom:'2px' }}, ['Wird geprüft …']),
+      el('div', { style:{ fontSize:'12px', color:'#6B7280' }}, ['(kann 5–60 Sekunden dauern)'])
+    ]);
+    card.appendChild(spin); card.appendChild(txtBox);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+  function showLoading(){ const o=ensureOverlay(); o.style.display='flex'; const c=o.firstChild; if (c) { c.tabIndex=-1; c.focus({preventScroll:true}); } }
+  function hideLoading(){ if (overlay) overlay.style.display='none'; }
+
+  // ---------- Mount ----------
+  function mountRoot(){
+    const existing = document.getElementById('regukit-a11y');
+    if (existing) return existing;
+    const host = el('div', { attrs:{ id:'regukit-a11y' }, style:{ maxWidth:'900px', margin:'20px auto' }});
     document.body.appendChild(host);
     return host;
   }
 
-  // ---- Fetch ----
-  async function runAudit(url) {
+  // ---------- API ----------
+  async function runAudit(url){
     const r = await fetch(ENDPOINT, {
       method:'POST',
       headers:{ 'Content-Type':'application/json' },
@@ -400,251 +428,204 @@ app.get('/embed.js', (_req, res) => {
     return r.json();
   }
 
-  // ---- UI: Form + results shell ----
+  // ---------- UI ----------
   function renderForm(container){
-    const wrap = createElement('div', { style:{
+    const box = el('div', { style:{
       fontFamily:'system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif',
-      border:'2px solid #e5e7eb', borderRadius:'12px', padding:'16px', background:'#fff', boxShadow:'0 4px 6px rgba(0,0,0,0.05)'
+      border:'2px solid #e5e7eb', borderRadius:'12px', padding:'16px',
+      background:'#fff', boxShadow:'0 4px 6px rgba(0,0,0,0.05)'
     }});
-
-    const title = createElement('h3', { style:{ margin:'0 0 12px 0', fontSize:'18px', color:'#111827' }}, ['🔍 Barrierefreiheits-Check (WCAG 2.1 AA)']);
-
-    const row = createElement('div', { style:{ display:'flex', gap:'8px', flexWrap:'wrap' }});
-    const input = createElement('input', {
-      type:'url', placeholder:'https://example.com', required:'required',
-      style:{ flex:'1', minWidth:'260px', padding:'10px 12px', border:'1px solid #d1d5db', borderRadius:'8px', fontSize:'14px' }
-    });
-    const btn = createElement('button', {
-      attrs:{ type:'button' },
-      style:{ padding:'10px 14px', border:'0', borderRadius:'8px', cursor:'pointer', fontWeight:'600', color:'#fff', background:'#3b82f6' }
-    }, ['Prüfen']);
-
-    const status = createElement('div', { style:{ marginTop:'8px', fontSize:'12px', color:'#6b7280' }});
-    const results = createElement('div', { style:{ marginTop:'16px' }});
+    const h = el('h3', { style:{ margin:'0 0 12px 0', fontSize:'18px', color:'#111827' }}, ['🔍 Barrierefreiheits-Check (WCAG 2.1 AA)']);
+    const row = el('div', { style:{ display:'flex', gap:'8px', flexWrap:'wrap' }});
+    const input = el('input', { type:'url', placeholder:'https://example.com', required:true, style:{ flex:'1', minWidth:'260px', padding:'10px 12px', border:'1px solid #d1d5db', borderRadius:'8px', fontSize:'14px' }});
+    const btn = el('button', { attrs:{ type:'button' }, style:{ padding:'10px 14px', border:'0', borderRadius:'8px', cursor:'pointer', fontWeight:'600', color:'#fff', background:'#3b82f6' }}, ['Prüfen']);
+    const status = el('div', { style:{ marginTop:'8px', fontSize:'12px', color:'#6b7280' }});
+    const results = el('div', { style:{ marginTop:'16px' }});
 
     btn.addEventListener('click', async () => {
       const url = input.value.trim();
-      if (!url) { text(status, 'Bitte eine gültige URL eingeben.'); return; }
-      text(status, 'Analysiere… (kann je nach Seite 5–60s dauern)');
-      results.innerHTML = '';
+      if (!url) { setText(status, 'Bitte eine gültige URL eingeben.'); input.focus(); return; }
+      results.innerHTML = ''; setText(status, '');
+      showLoading();
       try {
         const data = await runAudit(url);
-        text(status, '');
         renderResults(results, data);
-      } catch (e) {
-        text(status, 'Fehler: ' + (e.message || e));
+      } catch(e){
+        setText(status, 'Fehler: ' + (e.message || e)); status.style.color = '#dc2626';
+      } finally {
+        hideLoading();
       }
     });
 
-    row.appendChild(input);
-    row.appendChild(btn);
-    wrap.appendChild(title);
-    wrap.appendChild(row);
-    wrap.appendChild(status);
-    wrap.appendChild(results);
-    container.appendChild(wrap);
+    row.appendChild(input); row.appendChild(btn);
+    box.appendChild(h); box.appendChild(row); box.appendChild(status); box.appendChild(results);
+    container.appendChild(box);
   }
 
-  // ---- Rendering: high-level cards & sections ----
-  function renderResults(container, data) {
-    const scoreColor = data.score >= 90 ? '#059669' :
-                       data.score >= 70 ? '#eab308' :
-                       data.score >= 50 ? '#f59e0b' : '#dc2626';
+  function renderResults(container, data){
+    const scoreColor = data.score >= 90 ? '#059669' : data.score >= 70 ? '#eab308' : data.score >= 50 ? '#f59e0b' : '#dc2626';
 
-    const scoreSection = createElement('div', { style:{
-      textAlign:'center', marginBottom:'20px', padding:'20px',
-      backgroundColor: scoreColor + '20', borderRadius:'12px', border:'2px solid '+scoreColor
-    }});
-    scoreSection.appendChild(createElement('div', { style:{ fontSize:'2.5rem', fontWeight:'700', color:scoreColor, marginBottom:'8px' }}, [String(data.score)+'/100']));
-    scoreSection.appendChild(createElement('div', { style:{ fontSize:'1.2rem', fontWeight:'600', color:scoreColor, marginBottom:'8px' }}, ['Note: '+(data.grade||'–')]));
-    scoreSection.appendChild(createElement('div', { style:{ fontSize:'0.9rem', color:'#4b5563', fontStyle:'italic' }}, [data.assessment || '']));
+    const score = el('div', { style:{ textAlign:'center', marginBottom:'20px', padding:'20px', backgroundColor: scoreColor+'20', borderRadius:'12px', border:'2px solid '+scoreColor }});
+    score.appendChild(el('div', { style:{ fontSize:'2.5rem', fontWeight:'700', color:scoreColor, marginBottom:'8px' }}, [String(data.score)+'/100']));
+    score.appendChild(el('div', { style:{ fontSize:'1.2rem', fontWeight:'600', color:scoreColor, marginBottom:'8px' }}, ['Note: '+(data.grade||'–')]));
+    score.appendChild(el('div', { style:{ fontSize:'0.9rem', color:'#4b5563', fontStyle:'italic' }}, [data.assessment || '']));
 
-    const statsSection = createElement('div', { style:{
-      display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))', gap:'12px', marginBottom:'20px'
-    }});
+    const stats = el('div', { style:{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))', gap:'12px', marginBottom:'20px' }});
     [
       { label:'Kritisch', value:data.summary?.criticalCount ?? data.counts?.errors ?? 0, color:'#dc2626' },
       { label:'Warnungen', value:data.summary?.warningCount ?? data.counts?.warnings ?? 0, color:'#f59e0b' },
       { label:'Gesamt', value:data.summary?.total ?? (data.meta?.totalIssuesFound ?? 0), color:'#6b7280' }
-    ].forEach(stat => {
-      const card = createElement('div', { style:{
-        textAlign:'center', padding:'12px', backgroundColor:stat.color+'20',
-        borderRadius:'8px', border:'1px solid '+stat.color+'40'
-      }});
-      card.appendChild(createElement('div', { style:{ fontSize:'1.5rem', fontWeight:'700', color:stat.color, marginBottom:'4px' }}, [String(stat.value)]));
-      card.appendChild(createElement('div', { style:{ fontSize:'0.8rem', color:'#4b5563' }}, [stat.label]));
-      statsSection.appendChild(card);
+    ].forEach(s=>{
+      const c = el('div', { style:{ textAlign:'center', padding:'12px', backgroundColor:s.color+'20', borderRadius:'8px', border:'1px solid '+s.color+'40' }});
+      c.appendChild(el('div', { style:{ fontSize:'1.5rem', fontWeight:'700', color:s.color, marginBottom:'4px' }}, [String(s.value)]));
+      c.appendChild(el('div', { style:{ fontSize:'0.8rem', color:'#4b5563' }}, [s.label]));
+      stats.appendChild(c);
     });
 
-    let issuesSection = null;
-    const top = data.summary && Array.isArray(data.summary.topCritical) ? data.summary.topCritical : [];
-    if (top.length) {
-      issuesSection = createElement('div', { style:{
-        marginTop:'20px', padding:'16px', backgroundColor:'#fef2f2', borderRadius:'8px', border:'1px solid #fecaca'
-      }});
-      issuesSection.appendChild(createElement('div', { style:{ fontWeight:'600', marginBottom:'12px', color:'#991b1b' }}, ['🚨 Wichtigste Probleme:']));
-      top.forEach(issue => {
-        const row = createElement('div', { style:{ padding:'8px 0', borderBottom:'1px solid #fecaca', fontSize:'0.9rem' }});
-        const t = createElement('span', { style:{ fontWeight:'600', color:'#1f2937' }}, [issue.title || '']);
-        const badge = createElement('span', { style:{ backgroundColor:'#dc2626', color:'#fff', padding:'2px 6px', borderRadius:'10px', fontSize:'0.7rem', marginLeft:'8px' }}, [String(issue.count || 0)+'x']);
-        row.appendChild(t); row.appendChild(badge);
-        if (issue.fix) row.appendChild(createElement('div', { style:{ marginTop:'4px', fontSize:'0.8rem', color:'#6b7280', fontStyle:'italic' }}, ['💡 '+issue.fix]));
-        issuesSection.appendChild(row);
+    container.appendChild(score);
+    container.appendChild(stats);
+
+    // Top critical
+    const top = Array.isArray(data.summary?.topCritical) ? data.summary.topCritical : [];
+    if (top.length){
+      const card = el('div', { style:{ marginTop:'20px', padding:'16px', background:'#fef2f2', borderRadius:'8px', border:'1px solid #fecaca' }});
+      card.appendChild(el('div', { style:{ fontWeight:'600', marginBottom:'12px', color:'#991b1b' }}, ['🚨 Wichtigste Probleme:']));
+      top.forEach(i=>{
+        const row = el('div', { style:{ padding:'8px 0', borderBottom:'1px solid #fecaca', fontSize:'0.9rem' }});
+        const t = el('span', { style:{ fontWeight:'600', color:'#1f2937' }}, [i.title || '']);
+        const b = el('span', { style:{ background:'#dc2626', color:'#fff', padding:'2px 6px', borderRadius:'10px', fontSize:'0.7rem', marginLeft:'8px' }}, [String(i.count||0)+'x']);
+        row.appendChild(t); row.appendChild(b);
+        if (i.fix) row.appendChild(el('div', { style:{ marginTop:'4px', fontSize:'0.8rem', color:'#6b7280', fontStyle:'italic' }}, ['💡 '+i.fix]));
+        card.appendChild(row);
       });
+      container.appendChild(card);
     }
 
-    container.appendChild(scoreSection);
-    container.appendChild(statsSection);
-    if (issuesSection) container.appendChild(issuesSection);
-
-    const q = data.summary && Array.isArray(data.summary.quickWins) ? data.summary.quickWins : [];
-    if (q.length) {
-      const quick = createElement('div', { style:{ marginTop:'16px', padding:'12px', backgroundColor:'#ecfdf5', borderRadius:'8px', border:'1px solid #a7f3d0' }});
-      quick.appendChild(createElement('div', { style:{ fontWeight:'600', marginBottom:'8px', color:'#065f46' }}, ['🎯 Schnell behebbar:']));
-      const list = createElement('ul', { style:{ margin:'0', paddingLeft:'18px', color:'#047857', fontSize:'0.95rem' }});
-      q.forEach(item => list.appendChild(createElement('li', {}, [item])));
-      quick.appendChild(list);
+    // Quick wins
+    const q = Array.isArray(data.summary?.quickWins) ? data.summary.quickWins : [];
+    if (q.length){
+      const quick = el('div', { style:{ marginTop:'16px', padding:'12px', background:'#ecfdf5', borderRadius:'8px', border:'1px solid #a7f3d0' }});
+      quick.appendChild(el('div', { style:{ fontWeight:'600', marginBottom:'8px', color:'#065f46' }}, ['🎯 Schnell behebbar:']));
+      const ul = el('ul', { style:{ margin:'0', paddingLeft:'18px', color:'#047857', fontSize:'0.95rem' }});
+      q.forEach(x=>ul.appendChild(el('li', {}, [x])));
+      quick.appendChild(ul);
       container.appendChild(quick);
     }
 
-    if (Array.isArray(data.issues) && data.issues.length) {
-      renderDetailedIssues(container, data.issues);
+    if (Array.isArray(data.issues) && data.issues.length){
+      renderDetails(container, data.issues);
     }
   }
 
-  // ---- Details with Tabs (accessible) ----
-  function renderDetailedIssues(container, issues){
-    const btn = createElement('button', {
-      attrs:{ type:'button', 'aria-expanded':'false' },
-      style:{ marginTop:'16px', padding:'10px 16px', background:'#3b82f6', color:'#fff', border:'0', borderRadius:'8px', cursor:'pointer', fontSize:'14px', fontWeight:'600', width:'100%' }
-    }, ['🔍 Alle Details anzeigen']);
+  // ---------- Details (Tabs) ----------
+  function renderDetails(container, issues){
+    const btn = el('button', { attrs:{ type:'button', 'aria-expanded':'false' }, style:{ marginTop:'16px', padding:'10px 16px', background:'#3b82f6', color:'#fff', border:'0', borderRadius:'8px', cursor:'pointer', fontSize:'14px', fontWeight:'600', width:'100%' }}, ['🔍 Alle Details anzeigen']);
+    const details = el('div', { style:{ display:'none', marginTop:'16px', border:'1px solid #e5e7eb', borderRadius:'8px', overflow:'hidden' }});
+    const id = 'a11y-details-'+Math.random().toString(36).slice(2);
+    details.id = id; btn.setAttribute('aria-controls', id);
 
-    const details = createElement('div', { style:{ display:'none', marginTop:'16px', border:'1px solid #e5e7eb', borderRadius:'8px', overflow:'hidden' }});
-    const detailsId = 'a11y-details-'+Math.random().toString(36).slice(2);
-    details.id = detailsId;
-    btn.setAttribute('aria-controls', detailsId);
-
-    let visible = false;
-    btn.addEventListener('click', () => {
-      visible = !visible;
-      details.style.display = visible ? 'block' : 'none';
-      btn.textContent = visible ? '❌ Details ausblenden' : '🔍 Alle Details anzeigen';
-      btn.setAttribute('aria-expanded', visible ? 'true' : 'false');
-      if (visible && !details.hasChildNodes()) {
-        renderTabsInterface(details, issues);
-      }
+    let open = false;
+    btn.addEventListener('click', ()=>{
+      open = !open;
+      details.style.display = open ? 'block' : 'none';
+      btn.textContent = open ? '❌ Details ausblenden' : '🔍 Alle Details anzeigen';
+      btn.setAttribute('aria-expanded', open ? 'true':'false');
+      if (open && !details.hasChildNodes()) buildTabs(details, issues);
     });
 
     container.appendChild(btn);
     container.appendChild(details);
   }
 
-  function renderTabsInterface(container, issues){
-    const criticalIssues = issues.filter(i => i.isPriority === 'critical');
-    const warningIssues  = issues.filter(i => i.isPriority === 'warning');
-    const lowIssues      = issues.filter(i => i.isPriority === 'low');
+  function buildTabs(container, issues){
+    const crit = issues.filter(i=>i.isPriority==='critical');
+    const warn = issues.filter(i=>i.isPriority==='warning');
+    const low  = issues.filter(i=>i.isPriority==='low');
 
     const tabs = [
-      { id:'critical', label:'🚨 Kritisch',  count:criticalIssues.length, color:'#dc2626', issues:criticalIssues },
-      { id:'warning',  label:'⚠️ Warnungen', count:warningIssues.length,  color:'#f59e0b', issues:warningIssues },
-      { id:'low',      label:'💡 Hinweise',  count:lowIssues.length,      color:'#6b7280', issues:lowIssues },
-    ].filter(t => t.count > 0);
+      { id:'critical', label:'🚨 Kritisch',  color:'#dc2626', issues:crit },
+      { id:'warning',  label:'⚠️ Warnungen', color:'#f59e0b', issues:warn },
+      { id:'low',      label:'💡 Hinweise',  color:'#6b7280', issues:low  }
+    ].filter(t=>t.issues.length);
 
     let active = tabs.length ? tabs[0].id : null;
-
-    const tablist = createElement('div', { attrs:{ role:'tablist', 'aria-label':'A11y-Ergebnis-Tabs' }, style:{ display:'flex', background:'#f9fafb', borderBottom:'1px solid #e5e7eb' }});
-    const tabButtons = {};
-    const tabPanels  = {};
+    const tablist = el('div', { attrs:{ role:'tablist', 'aria-label':'A11y-Ergebnis-Tabs' }, style:{ display:'flex', background:'#f9fafb', borderBottom:'1px solid #e5e7eb' }});
+    const tabBtns = {};
+    const panels = {};
 
     function activate(id){
       active = id;
-      tabs.forEach(t => {
-        const b = tabButtons[t.id];
-        const p = tabPanels[t.id];
+      tabs.forEach(t=>{
+        const b = tabBtns[t.id], p = panels[t.id];
         if (!b || !p) return;
-        b.setAttribute('aria-selected', t.id===id ? 'true' : 'false');
-        b.setAttribute('tabindex', t.id===id ? '0' : '-1');
-        b.style.backgroundColor = t.id===id ? '#ffffff' : 'transparent';
-        b.style.borderBottom = t.id===id ? ('2px solid '+t.color) : '2px solid transparent';
+        b.setAttribute('aria-selected', String(t.id===id));
+        b.setAttribute('tabindex', t.id===id ? '0':'-1');
+        b.style.backgroundColor = t.id===id ? '#fff' : 'transparent';
+        b.style.borderBottom = t.id===id ? '2px solid '+t.color : '2px solid transparent';
         p.style.display = t.id===id ? 'block' : 'none';
       });
     }
 
-    tabs.forEach((t, i) => {
-      const btn = createElement('button', {
-        attrs:{ role:'tab', id:'tab-'+t.id, 'aria-selected': (t.id===active)+'', 'aria-controls':'panel-'+t.id, tabindex: t.id===active ? '0' : '-1' },
-        style:{ flex:'1', padding:'12px 16px', border:'none', backgroundColor: t.id===active ? '#ffffff' : 'transparent',
-                borderBottom: t.id===active ? '2px solid '+t.color : '2px solid transparent', cursor:'pointer', fontSize:'14px', fontWeight:'600', color:t.color }
-      }, [t.label+' ('+t.count+')']);
-
-      btn.addEventListener('click', () => activate(t.id));
-      btn.addEventListener('keydown', (e) => {
+    tabs.forEach(t=>{
+      const b = el('button', {
+        attrs:{ role:'tab', id:'tab-'+t.id, 'aria-selected': String(t.id===active), 'aria-controls':'panel-'+t.id, tabindex: t.id===active ? '0':'-1' },
+        style:{ flex:'1', padding:'12px 16px', border:'none', backgroundColor: t.id===active ? '#fff':'transparent', borderBottom: t.id===active ? '2px solid '+t.color : '2px solid transparent', cursor:'pointer', fontSize:'14px', fontWeight:'600', color:t.color }
+      }, [t.label+' ('+t.issues.length+')']);
+      b.addEventListener('click', ()=>activate(t.id));
+      b.addEventListener('keydown', (e)=>{
         if (!['ArrowRight','ArrowLeft','Home','End'].includes(e.key)) return;
         e.preventDefault();
-        const idx = tabs.findIndex(x => x.id===active);
+        const idx = tabs.findIndex(x=>x.id===active);
         if (e.key==='ArrowRight') activate(tabs[(idx+1)%tabs.length].id);
         if (e.key==='ArrowLeft')  activate(tabs[(idx-1+tabs.length)%tabs.length].id);
         if (e.key==='Home')       activate(tabs[0].id);
         if (e.key==='End')        activate(tabs[tabs.length-1].id);
-        tabButtons[active].focus();
+        tabBtns[active].focus();
       });
-
-      tabButtons[t.id] = btn;
-      tablist.appendChild(btn);
+      tabBtns[t.id] = b;
+      tablist.appendChild(b);
     });
 
-    const content = createElement('div', { style:{ padding:'0' }});
-    tabs.forEach(t => {
-      const panel = createElement('div', { attrs:{ role:'tabpanel', id:'panel-'+t.id, 'aria-labelledby':'tab-'+t.id }, style:{ display: t.id===active ? 'block' : 'none', maxHeight:'420px', overflowY:'auto' }});
-      const groups = groupIssuesByCategory(t.issues);
-
-      Object.entries(groups).forEach(([category, arr]) => {
-        const section = createElement('div', { style:{ borderBottom:'1px solid #f3f4f6' }});
-        section.appendChild(createElement('div', { style:{ padding:'12px 16px', background:'#f9fafb', fontWeight:'600', fontSize:'14px', color:'#374151', borderBottom:'1px solid #e5e7eb' }}, [category+' ('+arr.length+')']));
-        const body = createElement('div', { style:{ padding:'0' }});
-
-        arr.forEach((issue, idx) => {
-          const row = createElement('div', { style:{ padding:'16px', borderBottom: idx < arr.length-1 ? '1px solid #f3f4f6' : 'none', fontSize:'14px' }});
-          const title = createElement('div', { style:{ fontWeight:'600', marginBottom:'8px', color:'#1f2937' }}, [ (issue.translation && issue.translation.title) || issue.code.replace(/^WCAG2AA\./,'') ]);
-          const badge = createElement('span', { style:{ background:t.color, color:'#fff', padding:'2px 8px', borderRadius:'12px', fontSize:'12px', marginLeft:'8px' }}, [ String(issue.count||0)+'x' ]);
-          title.appendChild(badge);
-
-          const meta = createElement('div', { style:{ fontSize:'12px', color:'#6b7280', marginBottom:'8px' }}, [ (issue.isPriority||'') + ' • ' + (issue.type||'') ]);
-          const desc = createElement('div', { style:{ marginBottom:'8px', color:'#4b5563' }}, [ (issue.translation && issue.translation.description) || 'Keine Beschreibung verfügbar' ]);
-          const fix  = createElement('div', { style:{ padding:'8px', background:'#f0f9ff', borderRadius:'6px', marginBottom:'8px', fontSize:'13px', color:'#0369a1' }}, [ '💡 '+ ((issue.translation && issue.translation.fix) || 'Siehe WCAG-Richtlinien') ]);
-
+    const content = el('div');
+    tabs.forEach(t=>{
+      const p = el('div', { attrs:{ role:'tabpanel', id:'panel-'+t.id, 'aria-labelledby':'tab-'+t.id }, style:{ display: t.id===active ? 'block':'none', maxHeight:'420px', overflowY:'auto' }});
+      const groups = groupByCategory(t.issues);
+      Object.entries(groups).forEach(([name, list])=>{
+        const section = el('div', { style:{ borderBottom:'1px solid #f3f4f6' }});
+        section.appendChild(el('div', { style:{ padding:'12px 16px', background:'#f9fafb', fontWeight:'600', fontSize:'14px', color:'#374151', borderBottom:'1px solid #e5e7eb' }}, [name+' ('+list.length+')']));
+        const body = el('div');
+        list.forEach((iss, idx)=>{
+          const row = el('div', { style:{ padding:'16px', borderBottom: idx<list.length-1 ? '1px solid #f3f4f6':'none', fontSize:'14px' }});
+          const title = el('div', { style:{ fontWeight:'600', marginBottom:'8px', color:'#1f2937' }}, [ (iss.translation?.title) || iss.code.replace(/^WCAG2AA\\./,'') ]);
+          title.appendChild(el('span', { style:{ background:t.color, color:'#fff', padding:'2px 8px', borderRadius:'12px', fontSize:'12px', marginLeft:'8px' }}, [String(iss.count||0)+'x']));
           row.appendChild(title);
-          row.appendChild(meta);
-          row.appendChild(desc);
-          row.appendChild(fix);
-
-          if (Array.isArray(issue.samples) && issue.samples.length) {
-            const samples = createElement('div', { style:{ fontSize:'12px', color:'#6b7280' }});
-            samples.appendChild(createElement('div', { style:{ fontWeight:'600', marginBottom:'4px' }}, ['📍 Betroffen:']));
-            samples.appendChild(createElement('div', { style:{ fontFamily:'monospace', background:'#f9fafb', padding:'6px', borderRadius:'4px', whiteSpace:'pre-wrap', overflowWrap:'anywhere' }}, [ issue.samples.join(' • ') ]));
-            row.appendChild(samples);
+          row.appendChild(el('div', { style:{ fontSize:'12px', color:'#6b7280', marginBottom:'8px' }}, [ (iss.isPriority||'')+' • '+(iss.type||'') ]));
+          row.appendChild(el('div', { style:{ marginBottom:'8px', color:'#4b5563' }}, [ iss.translation?.description || 'Keine Beschreibung verfügbar' ]));
+          row.appendChild(el('div', { style:{ padding:'8px', background:'#f0f9ff', borderRadius:'6px', marginBottom:'8px', fontSize:'13px', color:'#0369a1' }}, [ '💡 '+(iss.translation?.fix || 'Siehe WCAG-Richtlinien') ]));
+          if (Array.isArray(iss.samples) && iss.samples.length){
+            const swrap = el('div', { style:{ fontSize:'12px', color:'#6b7280' }});
+            swrap.appendChild(el('div', { style:{ fontWeight:'600', marginBottom:'4px' }}, ['📍 Betroffen:']));
+            const ul = el('ul', { style:{ margin:'0', paddingLeft:'18px' }});
+            dedupe(iss.samples).slice(0,5).map(pretty).forEach(s=>{
+              ul.appendChild(el('li', {}, [ el('code', { style:{ background:'#f9fafb', padding:'2px 4px', borderRadius:'4px' }}, [s]) ]));
+            });
+            swrap.appendChild(ul);
+            row.appendChild(swrap);
           }
           body.appendChild(row);
         });
-
         section.appendChild(body);
-        panel.appendChild(section);
+        p.appendChild(section);
       });
-
-      tabPanels[t.id] = panel;
-      content.appendChild(panel);
+      panels[t.id] = p;
+      content.appendChild(p);
     });
 
     container.appendChild(tablist);
     container.appendChild(content);
-    if (tabs.length) {
-      const first = tabs[0].id;
-      const b = tabButtons[first];
-      if (b) b.focus({ preventScroll:true });
-    }
   }
 
-  function groupIssuesByCategory(issues){
+  function groupByCategory(issues){
     const cats = {
       'Navigation & Links': [],
       'Farben & Kontrast': [],
@@ -653,36 +634,33 @@ app.get('/embed.js', (_req, res) => {
       'Überschriften & Struktur': [],
       'Sonstiges': []
     };
-    issues.forEach(issue => {
-      const code = String(issue.code||'').toLowerCase();
-      const title = String((issue.translation && issue.translation.title) || '').toLowerCase();
-
-      if (code.includes('2_4_4') || code.includes('h77') || title.includes('link')) {
-        cats['Navigation & Links'].push(issue);
-      } else if (code.includes('1_4_3') || code.includes('g18') || code.includes('g145') || title.includes('kontrast')) {
-        cats['Farben & Kontrast'].push(issue);
-      } else if (code.includes('3_3') || code.includes('h32') || code.includes('3_2') || title.includes('formular') || title.includes('pflicht')) {
-        cats['Formulare'].push(issue);
-      } else if (code.includes('1_1_1') || code.includes('h67') || code.includes('h37') || code.includes('img') || title.includes('bild')) {
-        cats['Bilder & Medien'].push(issue);
-      } else if (code.includes('h42') || code.includes('h25') || code.includes('1_3_1') || title.includes('überschrift') || title.includes('titel')) {
-        cats['Überschriften & Struktur'].push(issue);
-      } else {
-        cats['Sonstiges'].push(issue);
-      }
+    issues.forEach(i=>{
+      const code = String(i.code||'').toLowerCase();
+      const title = String(i.translation?.title || '').toLowerCase();
+      if (code.includes('2_4_4') || code.includes('h77') || title.includes('link')) cats['Navigation & Links'].push(i);
+      else if (code.includes('1_4_3') || code.includes('g18') || code.includes('g145') || title.includes('kontrast')) cats['Farben & Kontrast'].push(i);
+      else if (code.includes('3_3') || code.includes('h32') || code.includes('3_2') || title.includes('formular') || title.includes('pflicht')) cats['Formulare'].push(i);
+      else if (code.includes('1_1_1') || code.includes('h67') || code.includes('img') || title.includes('bild')) cats['Bilder & Medien'].push(i);
+      else if (code.includes('h42') || code.includes('h25') || code.includes('1_3_1') || title.includes('überschrift') || title.includes('titel')) cats['Überschriften & Struktur'].push(i);
+      else cats['Sonstiges'].push(i);
     });
-    Object.keys(cats).forEach(k => { if (!cats[k].length) delete cats[k]; });
+    Object.keys(cats).forEach(k=>{ if (!cats[k].length) delete cats[k]; });
     return cats;
   }
-
-  // ---- Boot ----
-  function init(){
-    const root = mountRoot();
-    root.innerHTML = '';
-    renderForm(root);
+  function dedupe(arr){ const s=new Set(); return (arr||[]).filter(x=>x && !s.has(x) && s.add(x)); }
+  function pretty(sel){
+    return String(sel||'')
+      .replace(/^html\\s*>\\s*body\\s*>\\s*/i,'')
+      .replace(/\\s*>\\s*/g,' › ')
+      .replace(/:nth-child\\(\\d+\\)/g,'')
+      .replace(/\\s{2,}/g,' ')
+      .trim();
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+
+  // ---------- Boot ----------
+  function init(){ ensureOverlay(); const root = mountRoot(); root.innerHTML=''; renderForm(root); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+
 })();
   `;
   res.type('application/javascript').send(widget);
