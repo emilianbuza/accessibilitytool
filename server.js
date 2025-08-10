@@ -374,6 +374,15 @@ app.get('/', (_req, res) => {
 </body>
 </html>`);
 });
+
+// Fix für embed.js
+app.get('/embed.js', (req, res) => {
+  const fs = require('fs');
+  const embedPath = join(__dirname, 'public', 'embed.js');
+  const content = fs.readFileSync(embedPath, 'utf8');
+  res.setHeader('Content-Type', 'application/javascript');
+  res.send(content);
+});
 // ===== Server starten =====
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server läuft auf Port ${PORT}`);
@@ -391,4 +400,5 @@ process.on('SIGINT', () => {
   console.log('👋 Server wird heruntergefahren...');
   process.exit(0);
 });
+
 
