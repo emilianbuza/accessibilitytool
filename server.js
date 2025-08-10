@@ -462,168 +462,484 @@ app.get('/embed.js', (_req, res) => {
     container.appendChild(box);
   }
 
-  function renderResults(container, data){
-    const scoreColor = data.score >= 90 ? '#059669' : data.score >= 70 ? '#eab308' : data.score >= 50 ? '#f59e0b' : '#dc2626';
+function renderResults(container, data){
+  const scoreColor = data.score >= 90 ? '#059669' : data.score >= 70 ? '#eab308' : data.score >= 50 ? '#f59e0b' : '#dc2626';
 
-    const score = el('div', { style:{ textAlign:'center', marginBottom:'20px', padding:'20px', backgroundColor: scoreColor+'20', borderRadius:'12px', border:'2px solid '+scoreColor }});
-    score.appendChild(el('div', { style:{ fontSize:'2.5rem', fontWeight:'700', color:scoreColor, marginBottom:'8px' }}, [String(data.score)+'/100']));
-    score.appendChild(el('div', { style:{ fontSize:'1.2rem', fontWeight:'600', color:scoreColor, marginBottom:'8px' }}, ['Note: '+(data.grade||'–')]));
-    score.appendChild(el('div', { style:{ fontSize:'0.9rem', color:'#4b5563', fontStyle:'italic' }}, [data.assessment || '']));
+  // Hauptscore mit besserem Design
+  const scoreCard = el('div', {
+    style: {
+      background: `linear-gradient(135deg, ${scoreColor}15, ${scoreColor}08)`,
+      border: `2px solid ${scoreColor}30`,
+      borderRadius: '16px',
+      padding: '24px',
+      textAlign: 'center',
+      marginBottom: '24px',
+      position: 'relative',
+      overflow: 'hidden'
+    }
+  });
 
-    const stats = el('div', { style:{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))', gap:'12px', marginBottom:'20px' }});
-    [
-      { label:'Kritisch', value:data.summary?.criticalCount ?? data.counts?.errors ?? 0, color:'#dc2626' },
-      { label:'Warnungen', value:data.summary?.warningCount ?? data.counts?.warnings ?? 0, color:'#f59e0b' },
-      { label:'Gesamt', value:data.summary?.total ?? (data.meta?.totalIssuesFound ?? 0), color:'#6b7280' }
-    ].forEach(s=>{
-      const c = el('div', { style:{ textAlign:'center', padding:'12px', backgroundColor:s.color+'20', borderRadius:'8px', border:'1px solid '+s.color+'40' }});
-      c.appendChild(el('div', { style:{ fontSize:'1.5rem', fontWeight:'700', color:s.color, marginBottom:'4px' }}, [String(s.value)]));
-      c.appendChild(el('div', { style:{ fontSize:'0.8rem', color:'#4b5563' }}, [s.label]));
-      stats.appendChild(c);
+  // Score Nummer mit Animation
+  const scoreNum = el('div', {
+    style: {
+      fontSize: '3.5rem',
+      fontWeight: '800',
+      color: scoreColor,
+      marginBottom: '8px',
+      textShadow: `0 2px 4px ${scoreColor}20`
+    }
+  }, [`${data.score}/100`]);
+
+  const gradeRow = el('div', {
+    style: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }
+  });
+
+  gradeRow.appendChild(el('span', {
+    style: {
+      fontSize: '1.5rem',
+      fontWeight: '700',
+      background: scoreColor,
+      color: '#fff',
+      padding: '6px 16px',
+      borderRadius: '20px',
+      boxShadow: `0 4px 12px ${scoreColor}40`
+    }
+  }, [`Note: ${data.grade || '–'}`]));
+
+  const assessment = el('div', {
+    style: {
+      fontSize: '1rem',
+      color: '#4b5563',
+      fontWeight: '500',
+      background: 'rgba(255,255,255,0.8)',
+      padding: '8px 16px',
+      borderRadius: '8px',
+      display: 'inline-block'
+    }
+  }, [data.assessment || '']);
+
+  scoreCard.appendChild(scoreNum);
+  scoreCard.appendChild(gradeRow);
+  scoreCard.appendChild(assessment);
+
+  // Verbesserte Statistiken mit Icons
+  const statsGrid = el('div', {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+      gap: '16px',
+      marginBottom: '24px'
+    }
+  });
+
+  const stats = [
+    { 
+      icon: '🚨', 
+      label: 'Kritisch', 
+      value: data.summary?.criticalCount ?? data.counts?.errors ?? 0, 
+      color: '#dc2626',
+      bg: '#fef2f2'
+    },
+    { 
+      icon: '⚠️', 
+      label: 'Warnungen', 
+      value: data.summary?.warningCount ?? data.counts?.warnings ?? 0, 
+      color: '#f59e0b',
+      bg: '#fffbeb'
+    },
+    { 
+      icon: '📊', 
+      label: 'Gesamt', 
+      value: data.summary?.total ?? (data.meta?.totalIssuesFound ?? 0), 
+      color: '#6b7280',
+      bg: '#f9fafb'
+    }
+  ];
+
+  stats.forEach(stat => {
+    const card = el('div', {
+      style: {
+        background: stat.bg,
+        border: `2px solid ${stat.color}20`,
+        borderRadius: '12px',
+        padding: '16px',
+        textAlign: 'center',
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+        cursor: 'default'
+      }
     });
 
-    container.appendChild(score);
-    container.appendChild(stats);
+    card.addEventListener('mouseenter', () => {
+      card.style.transform = 'translateY(-2px)';
+      card.style.boxShadow = `0 8px 20px ${stat.color}20`;
+    });
 
-    // Top critical
-    const top = Array.isArray(data.summary?.topCritical) ? data.summary.topCritical : [];
-    if (top.length){
-      const card = el('div', { style:{ marginTop:'20px', padding:'16px', background:'#fef2f2', borderRadius:'8px', border:'1px solid #fecaca' }});
-      card.appendChild(el('div', { style:{ fontWeight:'600', marginBottom:'12px', color:'#991b1b' }}, ['🚨 Wichtigste Probleme:']));
-      top.forEach(i=>{
-        const row = el('div', { style:{ padding:'8px 0', borderBottom:'1px solid #fecaca', fontSize:'0.9rem' }});
-        const t = el('span', { style:{ fontWeight:'600', color:'#1f2937' }}, [i.title || '']);
-        const b = el('span', { style:{ background:'#dc2626', color:'#fff', padding:'2px 6px', borderRadius:'10px', fontSize:'0.7rem', marginLeft:'8px' }}, [String(i.count||0)+'x']);
-        row.appendChild(t); row.appendChild(b);
-        if (i.fix) row.appendChild(el('div', { style:{ marginTop:'4px', fontSize:'0.8rem', color:'#6b7280', fontStyle:'italic' }}, ['💡 '+i.fix]));
-        card.appendChild(row);
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = 'translateY(0)';
+      card.style.boxShadow = 'none';
+    });
+
+    const iconDiv = el('div', { style: { fontSize: '1.5rem', marginBottom: '8px' }}, [stat.icon]);
+    const valueDiv = el('div', {
+      style: {
+        fontSize: '2rem',
+        fontWeight: '800',
+        color: stat.color,
+        marginBottom: '4px'
+      }
+    }, [String(stat.value)]);
+    const labelDiv = el('div', {
+      style: {
+        fontSize: '0.875rem',
+        color: stat.color,
+        fontWeight: '600',
+        opacity: '0.8'
+      }
+    }, [stat.label]);
+
+    card.appendChild(iconDiv);
+    card.appendChild(valueDiv);
+    card.appendChild(labelDiv);
+    statsGrid.appendChild(card);
+  });
+
+  container.appendChild(scoreCard);
+  container.appendChild(statsGrid);
+
+  // Verbesserte kritische Probleme Sektion
+  const topCritical = Array.isArray(data.summary?.topCritical) ? data.summary.topCritical : [];
+  if (topCritical.length) {
+    const criticalCard = el('div', {
+      style: {
+        background: 'linear-gradient(135deg, #fef2f2, #fee2e2)',
+        border: '2px solid #fecaca',
+        borderRadius: '16px',
+        padding: '20px',
+        marginBottom: '20px',
+        position: 'relative'
+      }
+    });
+
+    const header = el('div', {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        marginBottom: '16px',
+        fontSize: '1.1rem',
+        fontWeight: '700',
+        color: '#991b1b'
+      }
+    }, ['🚨 Dringend zu beheben']);
+
+    criticalCard.appendChild(header);
+
+    topCritical.forEach((issue, index) => {
+      const issueRow = el('div', {
+        style: {
+          background: 'rgba(255, 255, 255, 0.8)',
+          borderRadius: '12px',
+          padding: '16px',
+          marginBottom: index < topCritical.length - 1 ? '12px' : '0',
+          border: '1px solid rgba(220, 38, 38, 0.1)',
+          transition: 'transform 0.2s ease'
+        }
       });
-      container.appendChild(card);
-    }
 
-    // Quick wins
-    const q = Array.isArray(data.summary?.quickWins) ? data.summary.quickWins : [];
-    if (q.length){
-      const quick = el('div', { style:{ marginTop:'16px', padding:'12px', background:'#ecfdf5', borderRadius:'8px', border:'1px solid #a7f3d0' }});
-      quick.appendChild(el('div', { style:{ fontWeight:'600', marginBottom:'8px', color:'#065f46' }}, ['🎯 Schnell behebbar:']));
-      const ul = el('ul', { style:{ margin:'0', paddingLeft:'18px', color:'#047857', fontSize:'0.95rem' }});
-      q.forEach(x=>ul.appendChild(el('li', {}, [x])));
-      quick.appendChild(ul);
-      container.appendChild(quick);
-    }
+      issueRow.addEventListener('mouseenter', () => {
+        issueRow.style.transform = 'scale(1.02)';
+      });
 
-    if (Array.isArray(data.issues) && data.issues.length){
-      renderDetails(container, data.issues);
-    }
+      issueRow.addEventListener('mouseleave', () => {
+        issueRow.style.transform = 'scale(1)';
+      });
+
+      const titleRow = el('div', {
+        style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }
+      });
+
+      const title = el('span', {
+        style: { fontWeight: '600', color: '#1f2937', fontSize: '0.95rem' }
+      }, [issue.title || '']);
+
+      const badge = el('span', {
+        style: {
+          background: 'linear-gradient(135deg, #dc2626, #b91c1c)',
+          color: '#fff',
+          padding: '4px 10px',
+          borderRadius: '12px',
+          fontSize: '0.75rem',
+          fontWeight: '700',
+          boxShadow: '0 2px 4px rgba(220, 38, 38, 0.3)'
+        }
+      }, [`${issue.count || 0}x`]);
+
+      titleRow.appendChild(title);
+      titleRow.appendChild(badge);
+
+      const fix = el('div', {
+        style: {
+          background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)',
+          padding: '10px 12px',
+          borderRadius: '8px',
+          fontSize: '0.85rem',
+          color: '#065f46',
+          border: '1px solid #a7f3d0',
+          marginTop: '8px'
+        }
+      }, [`💡 ${issue.fix || 'Siehe WCAG-Richtlinien'}`]);
+
+      issueRow.appendChild(titleRow);
+      if (issue.fix) issueRow.appendChild(fix);
+      criticalCard.appendChild(issueRow);
+    });
+
+    container.appendChild(criticalCard);
   }
+
+  // Verbesserte Quick Wins
+  const quickWins = Array.isArray(data.summary?.quickWins) ? data.summary.quickWins : [];
+  if (quickWins.length) {
+    const quickCard = el('div', {
+      style: {
+        background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)',
+        border: '2px solid #a7f3d0',
+        borderRadius: '16px',
+        padding: '20px',
+        marginBottom: '20px'
+      }
+    });
+
+    const quickHeader = el('div', {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        marginBottom: '12px',
+        fontSize: '1.1rem',
+        fontWeight: '700',
+        color: '#065f46'
+      }
+    }, ['🎯 Schnell behebbar']);
+
+    const quickList = el('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' }});
+
+    quickWins.forEach(win => {
+      const item = el('div', {
+        style: {
+          background: 'rgba(255, 255, 255, 0.8)',
+          padding: '10px 16px',
+          borderRadius: '8px',
+          color: '#047857',
+          fontWeight: '500',
+          fontSize: '0.9rem',
+          border: '1px solid rgba(16, 185, 129, 0.2)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }
+      });
+
+      const checkIcon = el('span', { style: { color: '#10b981', fontWeight: '700' }}, ['✓']);
+      const text = el('span', {}, [win]);
+
+      item.appendChild(checkIcon);
+      item.appendChild(text);
+      quickList.appendChild(item);
+    });
+
+    quickCard.appendChild(quickHeader);
+    quickCard.appendChild(quickList);
+    container.appendChild(quickCard);
+  }
+
+  // Detaillierte Issues (falls vorhanden)
+  if (Array.isArray(data.issues) && data.issues.length) {
+    renderDetails(container, data.issues);
+  }
+}
 
   // ---------- Details (Tabs) ----------
-  function renderDetails(container, issues){
-    const btn = el('button', { attrs:{ type:'button', 'aria-expanded':'false' }, style:{ marginTop:'16px', padding:'10px 16px', background:'#3b82f6', color:'#fff', border:'0', borderRadius:'8px', cursor:'pointer', fontSize:'14px', fontWeight:'600', width:'100%' }}, ['🔍 Alle Details anzeigen']);
-    const details = el('div', { style:{ display:'none', marginTop:'16px', border:'1px solid #e5e7eb', borderRadius:'8px', overflow:'hidden' }});
-    const id = 'a11y-details-'+Math.random().toString(36).slice(2);
-    details.id = id; btn.setAttribute('aria-controls', id);
-
-    let open = false;
-    btn.addEventListener('click', ()=>{
-      open = !open;
-      details.style.display = open ? 'block' : 'none';
-      btn.textContent = open ? '❌ Details ausblenden' : '🔍 Alle Details anzeigen';
-      btn.setAttribute('aria-expanded', open ? 'true':'false');
-      if (open && !details.hasChildNodes()) buildTabs(details, issues);
-    });
-
-    container.appendChild(btn);
-    container.appendChild(details);
-  }
-
-  function buildTabs(container, issues){
-    const crit = issues.filter(i=>i.isPriority==='critical');
-    const warn = issues.filter(i=>i.isPriority==='warning');
-    const low  = issues.filter(i=>i.isPriority==='low');
-
-    const tabs = [
-      { id:'critical', label:'🚨 Kritisch',  color:'#dc2626', issues:crit },
-      { id:'warning',  label:'⚠️ Warnungen', color:'#f59e0b', issues:warn },
-      { id:'low',      label:'💡 Hinweise',  color:'#6b7280', issues:low  }
-    ].filter(t=>t.issues.length);
-
-    let active = tabs.length ? tabs[0].id : null;
-    const tablist = el('div', { attrs:{ role:'tablist', 'aria-label':'A11y-Ergebnis-Tabs' }, style:{ display:'flex', background:'#f9fafb', borderBottom:'1px solid #e5e7eb' }});
-    const tabBtns = {};
-    const panels = {};
-
-    function activate(id){
-      active = id;
-      tabs.forEach(t=>{
-        const b = tabBtns[t.id], p = panels[t.id];
-        if (!b || !p) return;
-        b.setAttribute('aria-selected', String(t.id===id));
-        b.setAttribute('tabindex', t.id===id ? '0':'-1');
-        b.style.backgroundColor = t.id===id ? '#fff' : 'transparent';
-        b.style.borderBottom = t.id===id ? '2px solid '+t.color : '2px solid transparent';
-        p.style.display = t.id===id ? 'block' : 'none';
-      });
+function renderDetails(container, issues) {
+  const detailsBtn = el('button', {
+    attrs: { type: 'button', 'aria-expanded': 'false' },
+    style: {
+      width: '100%',
+      padding: '16px 20px',
+      background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+      color: '#fff',
+      border: 'none',
+      borderRadius: '12px',
+      fontSize: '1rem',
+      fontWeight: '600',
+      cursor: 'pointer',
+      marginTop: '20px',
+      transition: 'all 0.3s ease',
+      boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '8px'
     }
+  });
 
-    tabs.forEach(t=>{
-      const b = el('button', {
-        attrs:{ role:'tab', id:'tab-'+t.id, 'aria-selected': String(t.id===active), 'aria-controls':'panel-'+t.id, tabindex: t.id===active ? '0':'-1' },
-        style:{ flex:'1', padding:'12px 16px', border:'none', backgroundColor: t.id===active ? '#fff':'transparent', borderBottom: t.id===active ? '2px solid '+t.color : '2px solid transparent', cursor:'pointer', fontSize:'14px', fontWeight:'600', color:t.color }
-      }, [t.label+' ('+t.issues.length+')']);
-      b.addEventListener('click', ()=>activate(t.id));
-      b.addEventListener('keydown', (e)=>{
-        if (!['ArrowRight','ArrowLeft','Home','End'].includes(e.key)) return;
-        e.preventDefault();
-        const idx = tabs.findIndex(x=>x.id===active);
-        if (e.key==='ArrowRight') activate(tabs[(idx+1)%tabs.length].id);
-        if (e.key==='ArrowLeft')  activate(tabs[(idx-1+tabs.length)%tabs.length].id);
-        if (e.key==='Home')       activate(tabs[0].id);
-        if (e.key==='End')        activate(tabs[tabs.length-1].id);
-        tabBtns[active].focus();
-      });
-      tabBtns[t.id] = b;
-      tablist.appendChild(b);
+  const btnIcon = el('span', { style: { fontSize: '1.2rem' }}, ['🔍']);
+  const btnText = el('span', {}, ['Alle Details anzeigen']);
+
+  detailsBtn.appendChild(btnIcon);
+  detailsBtn.appendChild(btnText);
+
+  detailsBtn.addEventListener('mouseenter', () => {
+    detailsBtn.style.transform = 'translateY(-2px)';
+    detailsBtn.style.boxShadow = '0 8px 20px rgba(59, 130, 246, 0.4)';
+  });
+
+  detailsBtn.addEventListener('mouseleave', () => {
+    detailsBtn.style.transform = 'translateY(0)';
+    detailsBtn.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+  });
+
+  const detailsContainer = el('div', {
+    style: {
+      display: 'none',
+      marginTop: '16px',
+      background: 'rgba(255, 255, 255, 0.95)',
+      borderRadius: '16px',
+      overflow: 'hidden',
+      boxShadow: '0 8px 25px rgba(0, 0, 0, 0.1)',
+      border: '1px solid rgba(0, 0, 0, 0.1)'
+    }
+  });
+
+  const id = 'a11y-details-' + Math.random().toString(36).slice(2);
+  detailsContainer.id = id;
+  detailsBtn.setAttribute('aria-controls', id);
+
+  let isOpen = false;
+  detailsBtn.addEventListener('click', () => {
+    isOpen = !isOpen;
+    detailsContainer.style.display = isOpen ? 'block' : 'none';
+    btnText.textContent = isOpen ? 'Details ausblenden' : 'Alle Details anzeigen';
+    btnIcon.textContent = isOpen ? '❌' : '🔍';
+    detailsBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+
+    if (isOpen && !detailsContainer.hasChildNodes()) {
+      buildImprovedTabs(detailsContainer, issues);
+    }
+  });
+
+  container.appendChild(detailsBtn);
+  container.appendChild(detailsContainer);
+}
+
+ function buildImprovedTabs(container, issues) {
+  const critical = issues.filter(i => i.isPriority === 'critical');
+  const warning = issues.filter(i => i.isPriority === 'warning');
+  const low = issues.filter(i => i.isPriority === 'low');
+
+  const tabs = [
+    { id: 'critical', label: 'Kritisch', icon: '🚨', color: '#dc2626', issues: critical },
+    { id: 'warning', label: 'Warnungen', icon: '⚠️', color: '#f59e0b', issues: warning },
+    { id: 'low', label: 'Hinweise', icon: '💡', color: '#6b7280', issues: low }
+  ].filter(t => t.issues.length);
+
+  if (!tabs.length) return;
+
+  let activeTab = tabs[0].id;
+  const tabButtons = {};
+  const tabPanels = {};
+
+  // Tab-Navigation
+  const tabNav = el('div', {
+    attrs: { role: 'tablist', 'aria-label': 'A11y-Ergebnis-Tabs' },
+    style: {
+      display: 'flex',
+      background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
+      borderBottom: '2px solid #e2e8f0'
+    }
+  });
+
+  function activateTab(tabId) {
+    activeTab = tabId;
+    tabs.forEach(tab => {
+      const btn = tabButtons[tab.id];
+      const panel = tabPanels[tab.id];
+      if (!btn || !panel) return;
+
+      const isActive = tab.id === tabId;
+      btn.setAttribute('aria-selected', String(isActive));
+      btn.setAttribute('tabindex', isActive ? '0' : '-1');
+      btn.style.background = isActive ? '#fff' : 'transparent';
+      btn.style.borderBottom = isActive ? `3px solid ${tab.color}` : '3px solid transparent';
+      btn.style.color = isActive ? tab.color : '#6b7280';
+      btn.style.fontWeight = isActive ? '700' : '600';
+      panel.style.display = isActive ? 'block' : 'none';
     });
-
-    const content = el('div');
-    tabs.forEach(t=>{
-      const p = el('div', { attrs:{ role:'tabpanel', id:'panel-'+t.id, 'aria-labelledby':'tab-'+t.id }, style:{ display: t.id===active ? 'block':'none', maxHeight:'420px', overflowY:'auto' }});
-      const groups = groupByCategory(t.issues);
-      Object.entries(groups).forEach(([name, list])=>{
-        const section = el('div', { style:{ borderBottom:'1px solid #f3f4f6' }});
-        section.appendChild(el('div', { style:{ padding:'12px 16px', background:'#f9fafb', fontWeight:'600', fontSize:'14px', color:'#374151', borderBottom:'1px solid #e5e7eb' }}, [name+' ('+list.length+')']));
-        const body = el('div');
-        list.forEach((iss, idx)=>{
-          const row = el('div', { style:{ padding:'16px', borderBottom: idx<list.length-1 ? '1px solid #f3f4f6':'none', fontSize:'14px' }});
-          const title = el('div', { style:{ fontWeight:'600', marginBottom:'8px', color:'#1f2937' }}, [ (iss.translation?.title) || iss.code.replace(/^WCAG2AA\\./,'') ]);
-          title.appendChild(el('span', { style:{ background:t.color, color:'#fff', padding:'2px 8px', borderRadius:'12px', fontSize:'12px', marginLeft:'8px' }}, [String(iss.count||0)+'x']));
-          row.appendChild(title);
-          row.appendChild(el('div', { style:{ fontSize:'12px', color:'#6b7280', marginBottom:'8px' }}, [ (iss.isPriority||'')+' • '+(iss.type||'') ]));
-          row.appendChild(el('div', { style:{ marginBottom:'8px', color:'#4b5563' }}, [ iss.translation?.description || 'Keine Beschreibung verfügbar' ]));
-          row.appendChild(el('div', { style:{ padding:'8px', background:'#f0f9ff', borderRadius:'6px', marginBottom:'8px', fontSize:'13px', color:'#0369a1' }}, [ '💡 '+(iss.translation?.fix || 'Siehe WCAG-Richtlinien') ]));
-          if (Array.isArray(iss.samples) && iss.samples.length){
-            const swrap = el('div', { style:{ fontSize:'12px', color:'#6b7280' }});
-            swrap.appendChild(el('div', { style:{ fontWeight:'600', marginBottom:'4px' }}, ['📍 Betroffen:']));
-            const ul = el('ul', { style:{ margin:'0', paddingLeft:'18px' }});
-            dedupe(iss.samples).slice(0,5).map(pretty).forEach(s=>{
-              ul.appendChild(el('li', {}, [ el('code', { style:{ background:'#f9fafb', padding:'2px 4px', borderRadius:'4px' }}, [s]) ]));
-            });
-            swrap.appendChild(ul);
-            row.appendChild(swrap);
-          }
-          body.appendChild(row);
-        });
-        section.appendChild(body);
-        p.appendChild(section);
-      });
-      panels[t.id] = p;
-      content.appendChild(p);
-    });
-
-    container.appendChild(tablist);
-    container.appendChild(content);
   }
+
+  tabs.forEach(tab => {
+    const btn = el('button', {
+      attrs: {
+        role: 'tab',
+        id: `tab-${tab.id}`,
+        'aria-selected': String(tab.id === activeTab),
+        'aria-controls': `panel-${tab.id}`,
+        tabindex: tab.id === activeTab ? '0' : '-1'
+      },
+      style: {
+        flex: '1',
+        padding: '16px 20px',
+        border: 'none',
+        background: tab.id === activeTab ? '#fff' : 'transparent',
+        borderBottom: tab.id === activeTab ? `3px solid ${tab.color}` : '3px solid transparent',
+        cursor: 'pointer',
+        fontSize: '0.95rem',
+        fontWeight: tab.id === activeTab ? '700' : '600',
+        color: tab.id === activeTab ? tab.color : '#6b7280',
+        transition: 'all 0.3s ease',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '6px'
+      }
+    });
+
+    const icon = el('span', { style: { fontSize: '1.1rem' }}, [tab.icon]);
+    const text = el('span', {}, [`${tab.label} (${tab.issues.length})`]);
+
+    btn.appendChild(icon);
+    btn.appendChild(text);
+    btn.addEventListener('click', () => activateTab(tab.id));
+
+    tabButtons[tab.id] = btn;
+    tabNav.appendChild(btn);
+  });
+
+  // Tab-Inhalte
+  const tabContent = el('div', { style: { background: '#fff' }});
+
+  tabs.forEach(tab => {
+    const panel = el('div', {
+      attrs: {
+        role: 'tabpanel',
+        id: `panel-${tab.id}`,
+        'aria-labelledby': `tab-${tab.id}`
+      },
+      style: {
+        display: tab.id === activeTab ? 'block' : 'none',
+        maxHeight: '500px',
+        overflowY: 'auto'
+      }
+    });
+
+    renderTabContent(panel, tab.issues, tab.color);
+    tabPanels[tab.id] = panel;
+    tabContent.appendChild(panel);
+  });
+
+  container.appendChild(tabNav);
+  container.appendChild(tabContent);
+}
 
   function groupByCategory(issues){
     const cats = {
@@ -656,7 +972,198 @@ app.get('/embed.js', (_req, res) => {
       .replace(/\\s{2,}/g,' ')
       .trim();
   }
+// Verbesserte Tab-Inhalte
+function renderTabContent(panel, issues, color) {
+  issues.forEach((issue, index) => {
+    const issueCard = el('div', {
+      style: {
+        padding: '20px',
+        borderBottom: index < issues.length - 1 ? '1px solid #f3f4f6' : 'none',
+        transition: 'background 0.2s ease'
+      }
+    });
 
+    issueCard.addEventListener('mouseenter', () => {
+      issueCard.style.background = '#f9fafb';
+    });
+
+    issueCard.addEventListener('mouseleave', () => {
+      issueCard.style.background = 'transparent';
+    });
+
+    // Titel mit Badge
+    const titleRow = el('div', {
+      style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }
+    });
+
+    const title = el('h4', {
+      style: {
+        margin: '0',
+        fontSize: '1.1rem',
+        fontWeight: '700',
+        color: '#1f2937',
+        flex: '1',
+        marginRight: '12px'
+      }
+    }, [issue.translation?.title || issue.code.replace(/^WCAG2AA\./, '')]);
+
+    const badge = el('span', {
+      style: {
+        background: `linear-gradient(135deg, ${color}, ${color}dd)`,
+        color: '#fff',
+        padding: '6px 12px',
+        borderRadius: '16px',
+        fontSize: '0.8rem',
+        fontWeight: '700',
+        boxShadow: `0 2px 6px ${color}40`,
+        whiteSpace: 'nowrap'
+      }
+    }, [`${issue.count || 0}x`]);
+
+    titleRow.appendChild(title);
+    titleRow.appendChild(badge);
+
+    // Priorität und Typ
+    const metaRow = el('div', {
+      style: {
+        display: 'flex',
+        gap: '8px',
+        marginBottom: '12px',
+        fontSize: '0.8rem',
+        color: '#6b7280'
+      }
+    });
+
+    const priorityBadge = el('span', {
+      style: {
+        background: `${color}20`,
+        color: color,
+        padding: '2px 8px',
+        borderRadius: '8px',
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        fontSize: '0.75rem'
+      }
+    }, [issue.isPriority || '']);
+
+    const typeBadge = el('span', {
+      style: {
+        background: '#f3f4f6',
+        color: '#4b5563',
+        padding: '2px 8px',
+        borderRadius: '8px',
+        fontWeight: '500',
+        fontSize: '0.75rem'
+      }
+    }, [issue.type || '']);
+
+    metaRow.appendChild(priorityBadge);
+    metaRow.appendChild(typeBadge);
+
+    // Beschreibung
+    const description = el('p', {
+      style: {
+        margin: '0 0 12px 0',
+        color: '#4b5563',
+        fontSize: '0.95rem',
+        lineHeight: '1.5'
+      }
+    }, [issue.translation?.description || 'Keine Beschreibung verfügbar']);
+
+    // Lösungsvorschlag
+    const fixBox = el('div', {
+      style: {
+        background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)',
+        border: '1px solid #bae6fd',
+        borderRadius: '10px',
+        padding: '12px 16px',
+        marginBottom: '12px'
+      }
+    });
+
+    const fixText = el('div', {
+      style: {
+        color: '#0369a1',
+        fontSize: '0.9rem',
+        fontWeight: '500',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '8px'
+      }
+    });
+
+    const lightbulb = el('span', { style: { fontSize: '1.1rem', flexShrink: '0' }}, ['💡']);
+    const fix = el('span', {}, [issue.translation?.fix || 'Siehe WCAG-Richtlinien']);
+
+    fixText.appendChild(lightbulb);
+    fixText.appendChild(fix);
+    fixBox.appendChild(fixText);
+
+    // Betroffene Elemente (falls vorhanden)
+    if (Array.isArray(issue.samples) && issue.samples.length) {
+      const samplesBox = el('div', {
+        style: {
+          background: '#f9fafb',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
+          padding: '12px',
+          fontSize: '0.85rem'
+        }
+      });
+
+      const samplesTitle = el('div', {
+        style: {
+          fontWeight: '600',
+          color: '#374151',
+          marginBottom: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px'
+        }
+      }, ['📍 Betroffene Elemente:']);
+
+      const samplesList = el('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' }});
+
+      const uniqueSamples = [...new Set(issue.samples)].slice(0, 5);
+      uniqueSamples.forEach(sample => {
+        const prettySample = sample
+          .replace(/^html\s*>\s*body\s*>\s*/i, '')
+          .replace(/\s*>\s*/g, ' › ')
+          .replace(/:nth-child\(\d+\)/g, '')
+          .replace(/\s{2,}/g, ' ')
+          .trim();
+
+        const sampleItem = el('code', {
+          style: {
+            background: '#fff',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            border: '1px solid #e5e7eb',
+            fontSize: '0.8rem',
+            color: '#1f2937',
+            display: 'block',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }
+        }, [prettySample || sample]);
+
+        samplesList.appendChild(sampleItem);
+      });
+
+      samplesBox.appendChild(samplesTitle);
+      samplesBox.appendChild(samplesList);
+      issueCard.appendChild(samplesBox);
+    }
+
+    issueCard.appendChild(titleRow);
+    issueCard.appendChild(metaRow);
+    issueCard.appendChild(description);
+    issueCard.appendChild(fixBox);
+
+    panel.appendChild(issueCard);
+  });
+}
   // ---------- Boot ----------
   function init(){ ensureOverlay(); const root = mountRoot(); root.innerHTML=''; renderForm(root); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
@@ -665,6 +1172,7 @@ app.get('/embed.js', (_req, res) => {
   `;
   res.type('application/javascript').send(widget);
 });
+
 
 // ===== Demo-Seite zum Testen =====
 app.get('/', (_req, res) => {
@@ -688,3 +1196,4 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 ReguKit A11y Check läuft auf Port ${PORT}`);
   console.log(`💪 Jetzt mit sauberen Reports!`);
 });
+
