@@ -395,9 +395,13 @@
     }
 
     // Detaillierte Issues (falls vorhanden)
+// Detaillierte Issues (falls vorhanden)
     if (Array.isArray(data.issues) && data.issues.length) {
       renderDetails(container, data.issues);
     }
+    
+    // PDF Export Button hinzufügen
+    addPdfExportButton(container, data);
   }
 
   // ---------- Details (Tabs) ----------
@@ -774,7 +778,123 @@
       panel.appendChild(issueCard);
     });
   }
+// PDF Export Button
+function addPdfExportButton(container, data) {
+  const exportBtn = el('button', {
+    attrs: { type: 'button' },
+    style: {
+      width: '100%',
+      padding: '12px 20px',
+      background: 'linear-gradient(135deg, #059669, #047857)',
+      color: '#fff',
+      border: 'none',
+      borderRadius: '12px',
+      fontSize: '1rem',
+      fontWeight: '600',
+      cursor: 'pointer',
+      marginTop: '16px',
+      transition: 'all 0.3s ease',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '8px'
+    }
+  });
 
+  const btnIcon = el('span', { style: { fontSize: '1.1rem' }}, ['📄']);
+  const btnText = el('span', {}, ['Als PDF herunterladen']);
+
+  exportBtn.appendChild(btnIcon);
+  exportBtn.appendChild(btnText);
+  exportBtn.addEventListener('click', () => exportToPDF(data));
+  
+  container.appendChild(exportBtn);
+}
+
+// PDF Export Funktion
+async function exportToPDF(data) {
+  try {
+    const btn = event.target.closest('button');
+    const originalText = btn.textContent;
+    btn.textContent = '🔄 Erstelle PDF...';
+    btn.disabled = true;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(20);
+    doc.setTextColor(102, 126, 234);
+    doc.text('🔍 Barrierefreiheits-Report', 20, 25);
+    
+    // URL und Datum
+    doc.setFontSize(12);
+    doc.setTextColor(107, 114, 128);
+    doc.text('Geprüfte URL: ' + data.url, 20, 35);
+    doc.text('Erstellt am: ' + new Date().toLocaleDateString('de-DE'), 20, 42);
+    
+    // Score
+    doc.setFontSize(16);
+    doc.setTextColor(data.score >= 70 ? 6 : 153, data.score >= 70 ? 95 : 27, data.score >= 70 ? 70 : 27);
+    doc.text('Score: ' + data.score + '/100 (Note: ' + (data.grade || '–') + ')', 20, 60);
+    
+    // Statistiken
+    let yPos = 80;
+    doc.setFontSize(14);
+    doc.setTextColor(31, 41, 55);
+    doc.text('📊 Übersicht', 20, yPos);
+    
+    yPos += 15;
+    doc.setFontSize(12);
+    doc.text('🚨 Kritische Probleme: ' + (data.summary?.criticalCount ?? 0), 25, yPos);
+    yPos += 8;
+    doc.text('⚠️ Warnungen: ' + (data.summary?.warningCount ?? 0), 25, yPos);
+    yPos += 8;
+    doc.text('📊 Gesamt: ' + (data.summary?.total ?? 0), 25, yPos);
+    
+    // Kritische Probleme
+    if (data.summary?.topCritical?.length) {
+      yPos += 20;
+      doc.setFontSize(14);
+      doc.setTextColor(153, 27, 27);
+      doc.text('🚨 Kritische Probleme', 20, yPos);
+      
+      data.summary.topCritical.slice(0, 10).forEach((issue, index) => {
+        yPos += 12;
+        if (yPos > 270) {
+          doc.addPage();
+          yPos = 25;
+        }
+        
+        doc.setFontSize(11);
+        doc.setTextColor(31, 41, 55);
+        doc.text((index + 1) + '. ' + issue.title + ' (' + issue.count + 'x)', 25, yPos);
+        
+        if (issue.fix) {
+          yPos += 7;
+          doc.setFontSize(9);
+          doc.setTextColor(107, 114, 128);
+          doc.text('💡 ' + issue.fix, 30, yPos);
+        }
+      });
+    }
+    
+    // Download
+    const fileName = 'a11y-report-' + new Date().toISOString().split('T')[0] + '.pdf';
+    doc.save(fileName);
+    
+    btn.textContent = originalText;
+    btn.disabled = false;
+    
+  } catch (error) {
+    console.error('PDF Export Fehler:', error);
+    alert('Fehler beim Erstellen des PDFs. Bitte versuchen Sie es erneut.');
+    
+    const btn = event.target.closest('button');
+    btn.textContent = '📄 Als PDF herunterladen';
+    btn.disabled = false;
+  }
+}
   // ---------- Boot ----------
   function init(){ ensureOverlay(); const root = mountRoot(); root.innerHTML=''; renderForm(root); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
