@@ -941,19 +941,6 @@ function renderDetails(container, issues) {
   container.appendChild(tabContent);
 }
 
-    issues.forEach(i=>{
-      const code = String(i.code||'').toLowerCase();
-      const title = String(i.translation?.title || '').toLowerCase();
-      if (code.includes('2_4_4') || code.includes('h77') || title.includes('link')) cats['Navigation & Links'].push(i);
-      else if (code.includes('1_4_3') || code.includes('g18') || code.includes('g145') || title.includes('kontrast')) cats['Farben & Kontrast'].push(i);
-      else if (code.includes('3_3') || code.includes('h32') || code.includes('3_2') || title.includes('formular') || title.includes('pflicht')) cats['Formulare'].push(i);
-      else if (code.includes('1_1_1') || code.includes('h67') || code.includes('img') || title.includes('bild')) cats['Bilder & Medien'].push(i);
-      else if (code.includes('h42') || code.includes('h25') || code.includes('1_3_1') || title.includes('überschrift') || title.includes('titel')) cats['Überschriften & Struktur'].push(i);
-      else cats['Sonstiges'].push(i);
-    });
-    Object.keys(cats).forEach(k=>{ if (!cats[k].length) delete cats[k]; });
-    return cats;
-  }
 // Verbesserte Tab-Inhalte
 function renderTabContent(panel, issues, color) {
   issues.forEach((issue, index) => {
@@ -1178,5 +1165,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 ReguKit A11y Check läuft auf Port ${PORT}`);
   console.log(`💪 Jetzt mit sauberen Reports!`);
 });
+
 
 
