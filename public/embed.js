@@ -273,7 +273,93 @@ btn.addEventListener('click', async () => {
       }
     ];
 
-  // In deiner embed.js, in der renderResults Funktion
+// -------- Nutzerfreundliche Zusatzpanels (Klartext + Next Steps + Legende) --------
+function addPlainLanguagePanels(container, data) {
+  // 1) „Was bedeutet der Score?“ (Klartext)
+  const explain = el('div', { style:{
+    background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:'12px',
+    padding:'16px', marginBottom:'16px'
+  }});
+  const score = Number(data?.score ?? 0);
+  const tone = score >= 90 ? {
+    title:'Sehr gut – fast barrierefrei 🎉',
+    msg:'Ihre Seite ist für die meisten Nutzer*innen gut zugänglich. Es gibt nur wenige offene Punkte.'
+  } : score >= 70 ? {
+    title:'Gut – mit Verbesserungs-Potenzial ✅',
+    msg:'Die wichtigsten Grundlagen sind vorhanden. Mit ein paar gezielten Anpassungen heben Sie die Qualität deutlich.'
+  } : score >= 50 ? {
+    title:'Ausbaufähig – bitte nachschärfen 💡',
+    msg:'Mehrere Aspekte erschweren die Nutzung. Ein kurzer Maßnahmenplan (siehe unten) bringt schnell Fortschritt.'
+  } : {
+    title:'Achtung – dringender Handlungsbedarf 🚨',
+    msg:'Wichtige Barrieren verhindern eine faire Nutzung. Starten Sie mit den kritischen Punkten.'
+  };
+  explain.appendChild(el('div', { style:{fontWeight:'700', color:'#111827', marginBottom:'6px'}}, [tone.title]));
+  explain.appendChild(el('div', { style:{color:'#4b5563', lineHeight:'1.5'}}, [tone.msg]));
+  container.appendChild(explain);
+
+  // 2) Empfohlene nächste Schritte (3–5 Minuten)
+  const quick = el('div', { style:{
+    background:'#ecfdf5', border:'1px solid #a7f3d0', borderRadius:'12px',
+    padding:'16px', marginBottom:'16px'
+  }});
+  quick.appendChild(el('div', { style:{fontWeight:'700', color:'#065f46', marginBottom:'10px'}},
+    ['Empfohlene nächste Schritte (3–5 Minuten)']));
+  
+  // Vorschläge dynamisch aus deinen Daten ableiten (fallbacks vorhanden)
+  const quickWins = Array.isArray(data?.summary?.quickWins) ? data.summary.quickWins.slice(0,5) : [];
+  const suggestions = quickWins.length ? quickWins : [
+    'Bilder mit kurzen, sinnvollen Alt-Texten versehen',
+    'Kontraste von Texten prüfen und ggf. erhöhen',
+    'Fokus-Rahmen für alle Buttons/Links gut sichtbar machen'
+  ];
+
+  const list = el('ul', { style:{margin:'0', padding:'0', listStyle:'none', display:'grid', gap:'8px'}});
+  suggestions.forEach(item => {
+    const li = el('li', { style:{
+      background:'#fff', border:'1px solid #a7f3d0', borderRadius:'8px',
+      padding:'10px 12px', display:'flex', alignItems:'center', gap:'8px'
+    }});
+    li.appendChild(el('span', { style:{fontWeight:'700', color:'#10b981'}}, ['✓']));
+    li.appendChild(el('span', { style:{color:'#065f46'}}, [String(item)]));
+    list.appendChild(li);
+  });
+  // Mini-Hinweis darunter
+  const hint = el('div', { style:{marginTop:'10px', fontSize:'12px', color:'#047857'}},
+    ['Tipp: Beginnen Sie mit den „Kritisch“-Punkten, die am häufigsten vorkommen.']);
+  quick.appendChild(list);
+  quick.appendChild(hint);
+  container.appendChild(quick);
+
+  // 3) Legende: Was bedeuten „Kritisch“, „Warnung“, „Hinweis“?
+  const legend = el('div', { style:{
+    background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:'12px',
+    padding:'16px', marginBottom:'16px'
+  }});
+  legend.appendChild(el('div', { style:{fontWeight:'700', color:'#9a3412', marginBottom:'8px'}},
+    ['Legende']));
+  const items = [
+    { label:'Kritisch (🚨)', color:'#dc2626', text:'Behebt Barrieren, die zentrale Funktionen blockieren – zuerst angehen.' },
+    { label:'Warnung (⚠️)', color:'#f59e0b', text:'Beeinträchtigt einzelne Gruppen oder Lesbarkeit – zeitnah optimieren.' },
+    { label:'Hinweis (💡)', color:'#6b7280', text:'Sauberkeit/Best Practices – nachziehen, wenn Zeit ist.' }
+  ];
+  const grid = el('div', { style:{display:'grid', gap:'8px'}});
+  items.forEach(it => {
+    const row = el('div', { style:{
+      display:'flex', gap:'10px', alignItems:'flex-start',
+      background:'#fff', border:'1px solid #fde68a', borderRadius:'8px', padding:'10px 12px'
+    }});
+    const chip = el('span', { style:{
+      background: it.color+'20', color:it.color, padding:'2px 8px', borderRadius:'999px',
+      fontWeight:'700', fontSize:'12px', whiteSpace:'nowrap'
+    }}, [it.label]);
+    const text = el('div', { style:{color:'#7c2d12'}}, [it.text]);
+    row.appendChild(chip); row.appendChild(text); grid.appendChild(row);
+  });
+  legend.appendChild(grid);
+  container.appendChild(legend);
+}
+
 // Ersetze den "stats.forEach" Teil mit diesem Code:
 
 stats.forEach(stat => {
@@ -358,8 +444,13 @@ stats.forEach(stat => {
   statsGrid.appendChild(card);
 });
 
-    container.appendChild(scoreCard);
-    container.appendChild(statsGrid);
+container.appendChild(scoreCard);
+
+// NEU: Klartext-Panels einblenden
+addPlainLanguagePanels(container, data);
+
+container.appendChild(statsGrid);
+
 
     // Verbesserte kritische Probleme Sektion
     const topCritical = Array.isArray(data.summary?.topCritical) ? data.summary.topCritical : [];
