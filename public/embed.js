@@ -21,34 +21,106 @@
   const setText = (node, v) => { node.textContent = v == null ? '' : String(v); return node; };
 
   // ---------- Loading Overlay ----------
-  let overlay;
-  function ensureOverlay(){
-    if (overlay) return overlay;
-    overlay = el('div', {
-      attrs:{ role:'dialog', 'aria-modal':'true', 'aria-label':'Analyse läuft' },
-      style:{
-        position:'fixed', inset:'0', background:'rgba(17,24,39,0.45)',
-        display:'none', alignItems:'center', justifyContent:'center',
-        zIndex:'2147483647', backdropFilter:'blur(1px)'
-      }
-    });
-    const card = el('div', { style:{
-      background:'#fff', borderRadius:'12px', padding:'18px 22px',
-      boxShadow:'0 10px 25px rgba(0,0,0,0.15)', display:'flex', gap:'12px', alignItems:'center'
-    }});
-    const spin = el('div', { style:{ width:'28px', height:'28px' }});
-    spin.innerHTML = '<svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="#E5E7EB" stroke-width="4" fill="none"></circle><path d="M22 12a10 10 0 0 0-10-10" stroke="#3B82F6" stroke-width="4" stroke-linecap="round" fill="none"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.9s" repeatCount="indefinite"/></path></svg>';
-    const txtBox = el('div', { attrs:{ 'aria-live':'polite', role:'status' }}, [
-      el('div', { style:{ fontWeight:'700', color:'#111827', marginBottom:'2px' }}, ['Wird geprüft …']),
-      el('div', { style:{ fontSize:'12px', color:'#6B7280' }}, ['(kann 5–60 Sekunden dauern)'])
-    ]);
-    card.appendChild(spin); card.appendChild(txtBox);
-    overlay.appendChild(card);
-    document.body.appendChild(overlay);
-    return overlay;
+  // ---------- Loading Overlay (mit Fortschrittsbalken) ----------
+let overlay, progressBar, progressTimer;
+
+function ensureOverlay(){
+  if (overlay) return overlay;
+  overlay = el('div', {
+    attrs:{ role:'dialog', 'aria-modal':'true', 'aria-label':'Analyse läuft' },
+    style:{
+      position:'fixed', inset:'0', background:'rgba(17,24,39,0.45)',
+      display:'none', alignItems:'center', justifyContent:'center',
+      zIndex:'2147483647', backdropFilter:'blur(1px)'
+    }
+  });
+
+  const card = el('div', { style:{
+    background:'#fff', borderRadius:'12px', padding:'18px 22px',
+    boxShadow:'0 10px 25px rgba(0,0,0,0.15)',
+    display:'flex', flexDirection:'column', gap:'12px', alignItems:'center',
+    width:'min(520px, 92vw)'
+  }});
+
+  // Zeile mit Spinner + Text
+  const row = el('div', { style:{ display:'flex', gap:'12px', alignItems:'center', width:'100%' }});
+  const spin = el('div', { style:{ width:'28px', height:'28px', flex:'0 0 28px' }});
+  spin.innerHTML = '<svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="#E5E7EB" stroke-width="4" fill="none"></circle><path d="M22 12a10 10 0 0 0-10-10" stroke="#3B82F6" stroke-width="4" stroke-linecap="round" fill="none"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.9s" repeatCount="indefinite"/></path></svg>';
+  const txtBox = el('div', { attrs:{ 'aria-live':'polite', role:'status' }}, [
+    el('div', { style:{ fontWeight:'700', color:'#111827', marginBottom:'2px' }}, ['Wird geprüft …']),
+    el('div', { style:{ fontSize:'12px', color:'#6B7280' }}, ['(kann 5–60 Sekunden dauern)'])
+  ]);
+  row.appendChild(spin);
+  row.appendChild(txtBox);
+
+  // Fortschrittsbalken
+  const progressOuter = el('div', { style:{
+    width:'100%', height:'8px', background:'#E5E7EB', borderRadius:'4px', overflow:'hidden'
+  }});
+  progressBar = el('div', { style:{
+    width:'0%', height:'100%', background:'#3B82F6',
+    color:'#fff', fontSize:'10px', lineHeight:'8px', textAlign:'center',
+    transition:'width 120ms linear'
+  }}, ['0%']);
+  progressOuter.appendChild(progressBar);
+
+  card.appendChild(row);
+  card.appendChild(progressOuter);
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function updateProgress(pct){
+  if (!progressBar) return;
+  const n = Math.max(0, Math.min(100, pct));
+  progressBar.style.width = n + '%';
+  progressBar.textContent = Math.round(n) + '%';
+}
+
+function startProgressLoop(){
+  stopProgressLoop();
+  let pct = 0;
+  progressTimer = setInterval(() => {
+    // Wird mit der Zeit langsamer und stoppt bei ~90 %
+    const step = Math.max(0.5, 4 - (pct / 30));
+    pct = Math.min(90, pct + step);
+    updateProgress(pct);
+  }, 180);
+}
+
+function stopProgressLoop(){
+  if (progressTimer){ clearInterval(progressTimer); progressTimer = null; }
+}
+
+function showLoading(){
+  const o = ensureOverlay();
+  o.style.display = 'flex';
+  document.body.style.overflow = 'hidden'; // Scroll sperren
+  updateProgress(0);
+  startProgressLoop();
+
+  const c = o.firstChild;
+  if (c){ c.tabIndex = -1; c.focus({ preventScroll:true }); }
+}
+
+function hideLoading({ complete=false } = {}){
+  if (!overlay) return;
+  stopProgressLoop();
+  if (complete){
+    updateProgress(100);
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      document.body.style.overflow = '';
+      updateProgress(0);
+    }, 350);
+  } else {
+    overlay.style.display = 'none';
+    document.body.style.overflow = '';
+    updateProgress(0);
   }
-  function showLoading(){ const o=ensureOverlay(); o.style.display='flex'; const c=o.firstChild; if (c) { c.tabIndex=-1; c.focus({preventScroll:true}); } }
-  function hideLoading(){ if (overlay) overlay.style.display='none'; }
+}
+
 
   // ---------- Mount ----------
   function mountRoot(){
@@ -84,20 +156,23 @@
     const status = el('div', { style:{ marginTop:'8px', fontSize:'12px', color:'#6b7280' }});
     const results = el('div', { style:{ marginTop:'16px' }});
 
-    btn.addEventListener('click', async () => {
-      const url = input.value.trim();
-      if (!url) { setText(status, 'Bitte eine gültige URL eingeben.'); input.focus(); return; }
-      results.innerHTML = ''; setText(status, '');
-      showLoading();
-      try {
-        const data = await runAudit(url);
-        renderResults(results, data);
-      } catch(e){
-        setText(status, 'Fehler: ' + (e.message || e)); status.style.color = '#dc2626';
-      } finally {
-        hideLoading();
-      }
-    });
+btn.addEventListener('click', async () => {
+  const url = input.value.trim();
+  if (!url) { setText(status, 'Bitte eine gültige URL eingeben.'); input.focus(); return; }
+  results.innerHTML = ''; setText(status, '');
+  showLoading();
+  btn.disabled = true; // optional: Doppelklicks vermeiden
+  try {
+    const data = await runAudit(url);
+    renderResults(results, data);
+    hideLoading({ complete: true }); // nur bei Erfolg auf 100 %
+  } catch (e) {
+    setText(status, 'Fehler: ' + (e.message || e)); status.style.color = '#dc2626';
+    hideLoading(); // bei Fehler ohne „complete“
+  } finally {
+    btn.disabled = false;
+  }
+});
 
     row.appendChild(input); row.appendChild(btn);
     box.appendChild(h); box.appendChild(row); box.appendChild(status); box.appendChild(results);
@@ -845,44 +920,53 @@ function addPdfExportButton(container, data) {
 
   exportBtn.appendChild(btnIcon);
   exportBtn.appendChild(btnText);
-  exportBtn.addEventListener('click', () => exportToPDF(data));
+  exportBtn.addEventListener('click', (event) => exportToPDF(event, data));
   
   container.appendChild(exportBtn);
 }
 
 // PDF Export Funktion
-async function exportToPDF(data) {
+// PDF Export (vollständig, mit Button-Status & Fehlerbehandlung)
+async function exportToPDF(event, data) {
+  const btn = event.target.closest('button');
+
   try {
-    const btn = event.target.closest('button');
+    // Button-Status setzen
     const originalText = btn.textContent;
     btn.textContent = '🔄 Erstelle PDF...';
     btn.disabled = true;
 
+    // jsPDF prüfen
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      throw new Error('jsPDF nicht gefunden. Bitte jsPDF auf der Seite laden.');
+    }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    
+
     // Header
     doc.setFontSize(20);
     doc.setTextColor(102, 126, 234);
     doc.text('🔍 Barrierefreiheits-Report', 20, 25);
-    
-    // URL und Datum
+
+    // URL & Datum
     doc.setFontSize(12);
     doc.setTextColor(107, 114, 128);
-    doc.text('Geprüfte URL: ' + data.url, 20, 35);
+    doc.text('Geprüfte URL: ' + (data.url || ''), 20, 35);
     doc.text('Erstellt am: ' + new Date().toLocaleDateString('de-DE'), 20, 42);
-    
+
     // Score
     doc.setFontSize(16);
-    doc.setTextColor(data.score >= 70 ? 6 : 153, data.score >= 70 ? 95 : 27, data.score >= 70 ? 70 : 27);
-    doc.text('Score: ' + data.score + '/100 (Note: ' + (data.grade || '–') + ')', 20, 60);
-    
-    // Statistiken
+    const green = [6, 95, 70], red = [153, 27, 27];
+    const ok = (data.score ?? 0) >= 70;
+    doc.setTextColor(...(ok ? green : red));
+    doc.text('Score: ' + (data.score ?? '–') + '/100 (Note: ' + (data.grade || '–') + ')', 20, 60);
+
+    // Übersicht
     let yPos = 80;
     doc.setFontSize(14);
     doc.setTextColor(31, 41, 55);
     doc.text('📊 Übersicht', 20, yPos);
-    
+
     yPos += 15;
     doc.setFontSize(12);
     doc.text('🚨 Kritische Probleme: ' + (data.summary?.criticalCount ?? 0), 25, yPos);
@@ -890,50 +974,57 @@ async function exportToPDF(data) {
     doc.text('⚠️ Warnungen: ' + (data.summary?.warningCount ?? 0), 25, yPos);
     yPos += 8;
     doc.text('📊 Gesamt: ' + (data.summary?.total ?? 0), 25, yPos);
-    
-    // Kritische Probleme
-    if (data.summary?.topCritical?.length) {
+
+    // Kritische Probleme (Top 10)
+    const topCritical = Array.isArray(data.summary?.topCritical) ? data.summary.topCritical : [];
+    if (topCritical.length) {
       yPos += 20;
       doc.setFontSize(14);
       doc.setTextColor(153, 27, 27);
       doc.text('🚨 Kritische Probleme', 20, yPos);
-      
-      data.summary.topCritical.slice(0, 10).forEach((issue, index) => {
+
+      topCritical.slice(0, 10).forEach((issue, index) => {
         yPos += 12;
-        if (yPos > 270) {
-          doc.addPage();
-          yPos = 25;
-        }
-        
+        if (yPos > 270) { doc.addPage(); yPos = 25; }
+
         doc.setFontSize(11);
         doc.setTextColor(31, 41, 55);
-        doc.text((index + 1) + '. ' + issue.title + ' (' + issue.count + 'x)', 25, yPos);
-        
-        if (issue.fix) {
+        const title = (issue?.title || '').toString();
+        const count = issue?.count ?? 0;
+        doc.text(`${index + 1}. ${title} (${count}x)`, 25, yPos);
+
+        if (issue?.fix) {
           yPos += 7;
+          if (yPos > 270) { doc.addPage(); yPos = 25; }
           doc.setFontSize(9);
           doc.setTextColor(107, 114, 128);
-          doc.text('💡 ' + issue.fix, 30, yPos);
+          // Lange Fix-Texte umbrechen
+          const lines = doc.splitTextToSize('💡 ' + String(issue.fix), 170);
+          doc.text(lines, 30, yPos);
+          yPos += (lines.length * 5) - 5;
         }
       });
     }
-    
-    // Download
+
+    // Datei speichern
     const fileName = 'a11y-report-' + new Date().toISOString().split('T')[0] + '.pdf';
     doc.save(fileName);
-    
+
+    // Button zurücksetzen
     btn.textContent = originalText;
     btn.disabled = false;
-    
   } catch (error) {
     console.error('PDF Export Fehler:', error);
-    alert('Fehler beim Erstellen des PDFs. Bitte versuchen Sie es erneut.');
-    
-    const btn = event.target.closest('button');
-    btn.textContent = '📄 Als PDF herunterladen';
-    btn.disabled = false;
+    alert(error.message || 'Fehler beim Erstellen des PDFs. Bitte versuchen Sie es erneut.');
+
+    // Button wiederherstellen
+    if (btn) {
+      btn.textContent = '📄 Als PDF herunterladen';
+      btn.disabled = false;
+    }
   }
 }
+
   // ---------- Boot ----------
   function init(){ ensureOverlay(); const root = mountRoot(); root.innerHTML=''; renderForm(root); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
